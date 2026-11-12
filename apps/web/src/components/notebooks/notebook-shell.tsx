@@ -2,10 +2,11 @@
 
 import { notebookIdSchema } from '@notebook-lite/shared';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeftIcon, FileTextIcon, MessageSquareIcon, MicIcon } from 'lucide-react';
+import { ArrowLeftIcon, FileTextIcon, MicIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ComponentType, ReactNode } from 'react';
+import { ChatsPanel } from '@/components/chats/chats-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,8 +15,8 @@ import { useTRPC } from '@/lib/trpc/react';
 import { NotebookActions } from './notebook-actions';
 
 /**
- * Notebook workspace. M2 provides the frame (header, sections); sources, chats and podcasts
- * fill the sections in later milestones.
+ * Notebook workspace: header plus sections for sources, chats and podcasts. Chats are live (M4);
+ * sources and podcasts fill their sections in their milestones.
  */
 export function NotebookShell({ notebookId }: { notebookId: string }) {
   const trpc = useTRPC();
@@ -74,13 +75,7 @@ export function NotebookShell({ notebookId }: { notebookId: string }) {
         >
           Upload PDF, DOCX or Markdown files, or add web pages by URL.
         </Section>
-        <Section
-          icon={MessageSquareIcon}
-          title="Chats"
-          count={pluralize(data.counts.chats, 'chat')}
-        >
-          Ask questions answered only from your selected sources, with citations.
-        </Section>
+        <ChatsPanel notebookId={data.id} />
         <Section icon={MicIcon} title="Podcasts" count={pluralize(data.counts.podcasts, 'podcast')}>
           Turn sources into a monologue or a two-person dialogue.
         </Section>
