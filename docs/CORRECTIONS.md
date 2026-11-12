@@ -6,6 +6,24 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Chat (M4): per-user limit, request body, source viewer
+
+- **Scope:** Grounded chat (`docs/IMPLEMENTATION_PLAN.md` §5.4, §5.6, §6; `apps/api/src/chat`, `apps/web/src/components/chats`).
+- **Original decision:**
+  - Per-user rate limits use the Nest throttler (§5.6).
+  - `useChat` posts the conversation to `POST /chat/:chatId/stream` (AI SDK default body).
+  - Clicking a citation opens a side panel with "the source passage highlighted".
+- **Correction:**
+  - The per-user chat limit is a small in-memory fixed-window limiter (`UserRateLimiter`, `CHAT_MESSAGES_PER_MINUTE`, default 10 per minute), checked in the chat controller after `AuthGuard`. It sits on top of the global per-IP `express-rate-limit`.
+  - The web sends only the new question (`{ text }`). The API loads the history from `messages` through RLS, so clients cannot inject fake assistant turns or citations.
+  - `data-citations` carries every excerpt given to the model ([1]..[n]). The stored `messages.citations` snapshot keeps only the markers the answer uses, and unknown markers are removed from the stored text.
+  - The source viewer shows the cited chunk as one highlighted passage (with page and heading path), not the chunk inside the full document. Once the source is deleted, it shows the stored quote and "Source deleted".
+  - `OPENAI_API_KEY` is now required for the API to boot.
+- **Rationale:**
+  - The limiter needs the authenticated user id. The Nest throttler would add a dependency and a guard order problem for a single endpoint, and one API container does not need a shared store.
+  - Server-side history is the source of truth for grounding and persistence.
+  - The cited chunk is exactly what the model saw, so it is the passage to verify. A full-document view with in-place highlighting can follow later without schema changes.
+
 ## 2026-11-12 — Shared groundwork before M3, M4 and M5 run in parallel
 
 - **Scope:** Milestone order and sequencing (`docs/IMPLEMENTATION_PLAN.md` §10).
