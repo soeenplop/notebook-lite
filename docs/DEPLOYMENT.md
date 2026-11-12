@@ -6,8 +6,8 @@ environment **production**). The database, auth and storage live in Supabase Clo
 
 | App | Dokploy application (ID) | Dockerfile | Public URL | Port |
 |---|---|---|---|---|
-| web | `notebook-web` (`UbY0EfBSNnHrwfZQi9oi2`) | `docker/web.Dockerfile` | https://notebook.soeenplop.dev | 3000 |
-| api | `notebook-api` (`0hPb0bUYW_8hgc_sPcCSd`) | `docker/api.Dockerfile` | https://notebook-api.soeenplop.dev | 4000 |
+| web | `notebook-web` (`UbY0EfBSNnHrwfZQi9oi2`) | `docker/web.Dockerfile` | https://notebook-lite.soeenplop.dev | 3000 |
+| api | `notebook-api` (`0hPb0bUYW_8hgc_sPcCSd`) | `docker/api.Dockerfile` | https://notebook-lite-api.soeenplop.dev | 4000 |
 | worker | `notebook-worker` (`r6Y6MDzTVfbmZbAKvjdzu`) | `docker/worker.Dockerfile` | — (internal `/healthz` only) | 4001 |
 
 All three build from this public repository (`git` source, branch `main`, Docker context `.`).
@@ -28,7 +28,7 @@ Every push to `main` deploys, but only after CI passed (`.github/workflows/deplo
    then the pgTAP RLS tests run against the live project (each in a rolled-back transaction).
 3. **Deploy**: the workflow triggers a Dokploy deployment for api, worker and web.
    Dokploy Auto Deploy is off (see above), so the apps never run ahead of the schema.
-4. **Smoke**: waits for `https://notebook-api.soeenplop.dev/healthz` and the web login page,
+4. **Smoke**: waits for `https://notebook-lite-api.soeenplop.dev/healthz` and the web login page,
    then runs the Playwright smoke tests against production.
 
 Deployments are queued by Dokploy and build on the server; step 4 can still see the previous
@@ -55,20 +55,20 @@ the `production` environment would work as well and take precedence.
 | Variable | `SUPABASE_PROJECT_REF` | `tmwmklntjantjchkhmrg` |
 | Variable | `DOKPLOY_URL` | `https://dokploy.soeenplop.dev` |
 | Variable | `DOKPLOY_APP_ID_API` / `_WORKER` / `_WEB` | Dokploy application IDs (table above) |
-| Variable | `WEB_URL` | `https://notebook.soeenplop.dev` |
-| Variable | `API_URL` | `https://notebook-api.soeenplop.dev` |
+| Variable | `WEB_URL` | `https://notebook-lite.soeenplop.dev` |
+| Variable | `API_URL` | `https://notebook-lite-api.soeenplop.dev` |
 
 ### Dokploy application environment
 
 Set per application (*Environment* tab). Never put the Supabase secret key into `web`.
 
-- **api**: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `CORS_ORIGIN=https://notebook.soeenplop.dev`,
+- **api**: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `CORS_ORIGIN=https://notebook-lite.soeenplop.dev`,
   `LOG_LEVEL=info`, optional `RATE_LIMIT_PER_MINUTE`.
 - **worker**: `LOG_LEVEL=info`. Later milestones add `DATABASE_URL`, `SUPABASE_SECRET_KEY`,
   OpenAI and ElevenLabs keys.
 - **web**: build arguments (inlined into the browser bundle at build time)
   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
-  `NEXT_PUBLIC_API_URL=https://notebook-api.soeenplop.dev`. Changing them requires a rebuild.
+  `NEXT_PUBLIC_API_URL=https://notebook-lite-api.soeenplop.dev`. Changing them requires a rebuild.
 
 The full list of variables with explanations is in [`.env.example`](../.env.example).
 
@@ -103,6 +103,6 @@ docker build -f docker/worker.Dockerfile -t notebook-lite-worker .
 docker build -f docker/web.Dockerfile \
   --build-arg NEXT_PUBLIC_SUPABASE_URL=https://tmwmklntjantjchkhmrg.supabase.co \
   --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_... \
-  --build-arg NEXT_PUBLIC_API_URL=https://notebook-api.soeenplop.dev \
+  --build-arg NEXT_PUBLIC_API_URL=https://notebook-lite-api.soeenplop.dev \
   -t notebook-lite-web .
 ```

@@ -212,7 +212,7 @@ One root `.env.example` lists all keys, grouped by app; local dev loads the root
 
 - **Dokploy** project `notebook-lite` on `dokploy.soeenplop.dev` with three applications: `web`, `api`, `worker`, each built from `docker/<app>.Dockerfile` (multi-stage, `npm ci` with workspaces, production deps only; web uses Next.js standalone output). The worker image gets `ffmpeg` with the podcast pipeline (M5).
 - **Deploy on push to `main`** via `.github/workflows/deploy.yml` after CI: migrations + RLS tests → Dokploy deploy (api, worker, web; public repo as `git` source, no Dokploy auto-deploy) → production smoke test. Details in `docs/DEPLOYMENT.md`.
-- Domains: **`notebook.soeenplop.dev`** → web, **`notebook-api.soeenplop.dev`** → api (Traefik/HTTPS through Dokploy). The worker has no public domain. API `CORS_ORIGIN=https://notebook.soeenplop.dev`. The Supabase Auth site URL and redirect allow-list point to the web domain.
+- Domains: **`notebook-lite.soeenplop.dev`** → web, **`notebook-lite-api.soeenplop.dev`** → api (Traefik/HTTPS through Dokploy). The worker has no public domain. API `CORS_ORIGIN=https://notebook-lite.soeenplop.dev`. The Supabase Auth site URL and redirect allow-list point to the web domain.
 - **Supabase Cloud**: one remote project `notebook-lite` (ref `tmwmklntjantjchkhmrg`, eu-west-3), used for development and production; there is no local Supabase stack. Auth config and email templates are pushed with `supabase config push`. pg-boss uses the direct (session) connection string. Migrations are applied with `supabase db push` by the deploy workflow *before* the Dokploy deployments are triggered.
 - **CI (GitHub Actions)** on PRs and `main`: `npm ci` → lint → typecheck → test → build; RLS tests (`supabase test db --remote`) need a `SUPABASE_ACCESS_TOKEN` secret and are added to CI with the deployment work (M6); until then they run locally before every DB-related commit.
 
@@ -310,6 +310,6 @@ Each bullet ≈ one small, self-contained commit (lint, build, tests green).
 
 - **Q1 — Worker concurrency:** one concurrent job **per queue** (`ingest-source`, `generate-podcast`).
 - **Q2 — Supabase hosting:** Supabase Cloud.
-- **Q3 — Domains:** web `notebook.soeenplop.dev`, api `notebook-api.soeenplop.dev`.
+- **Q3 — Domains:** web `notebook-lite.soeenplop.dev`, api `notebook-lite-api.soeenplop.dev` (originally `notebook.` / `notebook-api.`; see [CORRECTIONS](CORRECTIONS.md)).
 - **Q4 — Dialogue TTS:** ElevenLabs text-to-dialogue endpoint (see [CORRECTIONS](CORRECTIONS.md)).
 - **Q5 — Supported languages:** `de` and `en`.
