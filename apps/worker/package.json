@@ -40,6 +40,7 @@
     "@types/jsdom": "30.0.0",
     "@types/supertest": "7.2.1",
     "@types/turndown": "5.0.6",
+    "ai": "7.0.171",
     "supertest": "7.3.2"
   }
 }

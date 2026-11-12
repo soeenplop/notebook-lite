@@ -1,3 +1,4 @@
+import { aiEnvSchema } from '@notebook-lite/ai';
 import { z } from 'zod';
 
 export const ENV = Symbol('ENV');
@@ -7,6 +8,13 @@ export const workerEnvSchema = z.object({
   DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//, 'must be a postgres:// connection string'),
   WORKER_PORT: z.coerce.number().int().min(1).max(65535).default(4001),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
+  SUPABASE_URL: z.url(),
+  /**
+   * Secret (service-role) key: bypasses RLS. Every query made with it filters by the job's
+   * user_id explicitly.
+   */
+  SUPABASE_SECRET_KEY: z.string().min(1),
+  ...aiEnvSchema.shape,
 });
 
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
