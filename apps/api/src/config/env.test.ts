@@ -1,10 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { loadEnv } from './env.js';
 
+const supabase = {
+  SUPABASE_URL: 'https://ref.supabase.co',
+  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_x',
+};
+
 describe('loadEnv', () => {
   it('parses a valid environment and applies defaults', () => {
-    const env = loadEnv({ CORS_ORIGIN: 'http://localhost:3000, https://notebook.soeenplop.dev' });
+    const env = loadEnv({
+      ...supabase,
+      SUPABASE_URL: 'https://ref.supabase.co/',
+      CORS_ORIGIN: 'http://localhost:3000, https://notebook.soeenplop.dev',
+    });
     expect(env).toEqual({
+      SUPABASE_URL: 'https://ref.supabase.co',
+      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_x',
       API_PORT: 4000,
       CORS_ORIGIN: ['http://localhost:3000', 'https://notebook.soeenplop.dev'],
       LOG_LEVEL: 'info',
@@ -12,11 +23,16 @@ describe('loadEnv', () => {
   });
 
   it('coerces the port', () => {
-    expect(loadEnv({ CORS_ORIGIN: 'http://localhost:3000', API_PORT: '8080' }).API_PORT).toBe(8080);
+    expect(
+      loadEnv({ ...supabase, CORS_ORIGIN: 'http://localhost:3000', API_PORT: '8080' }).API_PORT,
+    ).toBe(8080);
   });
 
   it('fails fast on missing or invalid values', () => {
     expect(() => loadEnv({})).toThrow(/CORS_ORIGIN/);
-    expect(() => loadEnv({ CORS_ORIGIN: 'not a url' })).toThrow(/Invalid API environment/);
+    expect(() => loadEnv({ ...supabase, CORS_ORIGIN: 'not a url' })).toThrow(
+      /Invalid API environment/,
+    );
+    expect(() => loadEnv({ CORS_ORIGIN: 'http://localhost:3000' })).toThrow(/SUPABASE_URL/);
   });
 });

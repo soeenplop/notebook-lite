@@ -58,7 +58,8 @@
     {
       "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
-        "no-console": "off"
+        "no-console": "off",
+        "typescript/no-unsafe-type-assertion": "off"
       }
     }
   ]
