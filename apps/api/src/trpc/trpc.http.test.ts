@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -9,7 +9,7 @@ import { JWKS } from '../auth/jwks.js';
 import { createTestKeys, type TestKeys, testEnv } from '../testing/fixtures.js';
 
 describe('tRPC over HTTP', () => {
-  let app: INestApplication;
+  let app: NestExpressApplication;
   let keys: TestKeys;
 
   beforeAll(async () => {
@@ -18,7 +18,7 @@ describe('tRPC over HTTP', () => {
       .overrideProvider(JWKS)
       .useValue(keys.jwks)
       .compile();
-    app = moduleRef.createNestApplication({ logger: false });
+    app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
     configureApp(app, testEnv);
     await app.init();
   });
