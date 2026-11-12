@@ -252,14 +252,18 @@ Each bullet ≈ one small, self-contained commit (lint, build, tests green).
 13. tRPC `notebooks.*` (list, get, create, update, delete) with tests.
 14. Web notebook overview, create/edit dialog, delete confirmation, notebook shell route.
 
+**G — Groundwork for parallel M3/M4/M5** (lands on `main` first, see [CORRECTIONS](CORRECTIONS.md))
+17. pg-boss setup (`packages/queue`, wired into api and worker; job type contracts in `shared`).
+18. Migration: `source_chunks`, `match_chunks`, FTS language trigger, indexes.
+21. `packages/ai`: model config, chunker + embedder.
+
+After G, **M3, M4 and M5 run in parallel** on separate branches and merge in that order. Expect small merge conflicts in `app-router.ts`, the `shared` exports and the notebook page layout. The authenticated end-to-end journey needs ingestion, so it runs after the M3 merge.
+
 **M3 — Sources**
 15. Storage buckets + policies (migration) + tests.
 16. tRPC `sources.*` (list, create, createFromUrl, delete; all scoped by `notebookId`) and sources panel with upload.
-17. pg-boss setup (shared queue module, job type contracts in `shared`).
-18. Migration: `source_chunks`, `match_chunks`, FTS language trigger, indexes.
 19. Extractors (MD, PDF, DOCX) with fixtures.
 20. URL fetcher with SSRF guard + readability.
-21. Chunker + embedder in `packages/ai`.
 22. Worker `ingest-source` job; status polling in web.
 23. Notebook delete: Storage cleanup + job cancellation.
 

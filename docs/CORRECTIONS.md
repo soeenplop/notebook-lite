@@ -6,6 +6,19 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-12 — Shared groundwork before M3, M4 and M5 run in parallel
+
+- **Scope:** Milestone order and sequencing (`docs/IMPLEMENTATION_PLAN.md` §10).
+- **Original decision:** M3 (sources), M4 (chat) and M5 (podcasts) run strictly one after another. The `source_chunks` table and `match_chunks` (step 18), pg-boss (step 17) and the chunker and embedder (step 21) are built inside M3.
+- **Correction:**
+  - A **groundwork** milestone (G) lands on `main` first. It contains:
+    - the `source_chunks` migration, the FTS triggers and `match_chunks`, with RLS tests;
+    - `packages/ai` with model config, the chunker and the embedder;
+    - `packages/queue` (pg-boss) wired into api and worker, with the job contracts for `ingest-source` and `generate-podcast` in `packages/shared`.
+  - After that, M3, M4 and M5 run in parallel on separate branches. They merge in the order M3 → M4 → M5.
+  - Steps that need ingested data end to end (the authenticated Playwright journey) run after the M3 merge. Before then, M4 and M5 test against seeded chunks or mocks.
+- **Rationale:** Decision by the project owner. M4's retrieval and M5's worker only depend on these contracts, not on the rest of M3. Landing them once on `main` avoids three branches each creating `packages/ai`, the chunk schema and the queue setup.
+
 ## 2026-11-12 — Domains renamed to notebook-lite.*
 
 - **Scope:** Deployment and configuration (`docs/DEPLOYMENT.md`, `docs/IMPLEMENTATION_PLAN.md` §8 and Q3, `AGENTS.md`, `supabase/config.toml`, Dokploy domains, app env, GitHub variables).
