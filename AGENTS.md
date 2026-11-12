@@ -14,6 +14,7 @@ Docs: [BRIEFING](docs/BRIEFING.md) · [IMPLEMENTATION_PLAN](docs/IMPLEMENTATION_
 - `packages/shared` — zod schemas, types, constants (source of truth for contracts)
 - `packages/db` — generated Supabase types, query helpers
 - `packages/ai` — prompts, model config, chunking, embeddings, script generation
+- `packages/queue` — typed pg-boss wrapper (`JobQueue`); job contracts live in `packages/shared` (`JOB_SCHEMAS`)
 - `packages/config` — shared tsconfig presets (base, node, nest, next); oxlint (`.oxlintrc.json`) and Prettier configs live in the repo root
 - `supabase/` — migrations, RLS tests, config
 
@@ -40,7 +41,7 @@ npm run test:e2e     # Playwright smoke tests (needs `npm run build -w @notebook
 
 - Node 26, TypeScript 7 (native `tsc`, no JS compiler API). ESM everywhere.
 - NestJS 12 apps are built with plain `tsc`, not the Nest CLI (which pins TypeScript 6). Next.js type-checks via the `tsc` CLI.
-- `packages/shared` is consumed from its `dist/`. Root `typecheck`/`test`/`dev` build it first (`npm run build:packages`).
+- `packages/shared`, `db`, `ai` and `queue` are consumed from their `dist/`. Root `typecheck`/`test`/`dev` build them first (`npm run build:packages`).
 - Web scripts run Next through `apps/web/scripts/next.mjs`, which loads the root `.env` (Next forwards Node flags to workers, so `--env-file` can't be used).
 - shadcn/ui uses the `base-nova` style (Base UI primitives). Add components with `npx shadcn@latest add <name> -c apps/web`.
 
@@ -63,6 +64,7 @@ npm run test:e2e     # Playwright smoke tests (needs `npm run build -w @notebook
 - **Tests:** Vitest; mock OpenAI/ElevenLabs (no real external calls in tests/CI).
 - **Secrets:** never commit them; document every new env var in the root `.env.example`.
 - **URL fetching:** always through the SSRF-guarded fetcher.
+- **Background jobs:** enqueue through `ctx.jobs.send(queue, payload)` (tRPC) or `JobQueue`; payloads are validated against `JOB_SCHEMAS` and carry `userId`, which the worker uses to scope its service-role queries.
 - **Migrations are deployed before the apps:** keep them backwards compatible with the running version (expand first, contract in a later release).
 - **Logging:** use Nest's `Logger` (backed by pino, JSON in production); never log tokens, cookies or secrets. Expensive procedures (chat, podcasts) get per-user rate limits on top of the global per-IP limit.
 

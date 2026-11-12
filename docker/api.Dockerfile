@@ -12,6 +12,7 @@ COPY packages/config/package.json packages/config/
 COPY packages/shared/package.json packages/shared/
 COPY packages/db/package.json packages/db/
 COPY packages/ai/package.json packages/ai/
+COPY packages/queue/package.json packages/queue/
 COPY apps/api/package.json apps/api/
 RUN npm ci --ignore-scripts --no-audit --no-fund \
       -w @notebook-lite/api --include-workspace-root
@@ -20,7 +21,7 @@ RUN npm ci --ignore-scripts --no-audit --no-fund \
 FROM deps AS build
 COPY packages packages
 COPY apps/api apps/api
-RUN npm run build -w @notebook-lite/shared -w @notebook-lite/db -w @notebook-lite/ai -w @notebook-lite/api
+RUN npm run build -w @notebook-lite/shared -w @notebook-lite/db -w @notebook-lite/ai -w @notebook-lite/queue -w @notebook-lite/api
 
 # --- production dependencies only ----------------------------------------------
 FROM ${NODE_IMAGE} AS prod-deps
@@ -30,6 +31,7 @@ COPY packages/config/package.json packages/config/
 COPY packages/shared/package.json packages/shared/
 COPY packages/db/package.json packages/db/
 COPY packages/ai/package.json packages/ai/
+COPY packages/queue/package.json packages/queue/
 COPY apps/api/package.json apps/api/
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund -w @notebook-lite/api
 
@@ -45,6 +47,8 @@ COPY --from=build /app/packages/db/package.json packages/db/
 COPY --from=build /app/packages/db/dist packages/db/dist
 COPY --from=build /app/packages/ai/package.json packages/ai/
 COPY --from=build /app/packages/ai/dist packages/ai/dist
+COPY --from=build /app/packages/queue/package.json packages/queue/
+COPY --from=build /app/packages/queue/dist packages/queue/dist
 COPY --from=build /app/apps/api/package.json apps/api/
 COPY --from=build /app/apps/api/dist apps/api/dist
 USER node

@@ -2,6 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { describe, expect, it } from 'vitest';
 import type { AuthUser } from '../auth/auth.types.js';
 import { fakeDb, type FakeResult } from '../testing/fake-db.js';
+import { fakeJobs } from '../testing/fixtures.js';
 import { appRouter } from '../trpc/app-router.js';
 
 const user: AuthUser = { id: 'user-1', email: 'u@example.com', accessToken: 'token' };
@@ -31,7 +32,7 @@ const summary = {
 
 function callerWith(...results: FakeResult[]) {
   const { db, queries } = fakeDb(...results);
-  return { caller: appRouter.createCaller({ user, supabase: db }), queries };
+  return { caller: appRouter.createCaller({ user, supabase: db, jobs: fakeJobs() }), queries };
 }
 
 async function trpcCode(promise: Promise<unknown>): Promise<string> {
@@ -46,7 +47,7 @@ async function trpcCode(promise: Promise<unknown>): Promise<string> {
 
 describe('notebooks router', () => {
   it('requires a session', async () => {
-    const caller = appRouter.createCaller({ user: null, supabase: null });
+    const caller = appRouter.createCaller({ user: null, supabase: null, jobs: fakeJobs() });
     expect(await trpcCode(caller.notebooks.list())).toBe('UNAUTHORIZED');
   });
 
