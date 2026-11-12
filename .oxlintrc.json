@@ -58,7 +58,7 @@
       }
     },
     {
-      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/src/testing/**"],
       "rules": {
         "no-console": "off",
         "typescript/no-unsafe-type-assertion": "off"
