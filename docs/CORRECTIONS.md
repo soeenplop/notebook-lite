@@ -6,6 +6,33 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-12 — Domains renamed to notebook-lite.*
+
+- **Scope:** Deployment and configuration (`docs/DEPLOYMENT.md`, `docs/IMPLEMENTATION_PLAN.md` §8 and Q3, `AGENTS.md`, `supabase/config.toml`, Dokploy domains, app env, GitHub variables).
+- **Original decision:** web on `notebook.soeenplop.dev`, api on `notebook-api.soeenplop.dev` (Q3).
+- **Correction:** web moves to **`notebook-lite.soeenplop.dev`** and api to **`notebook-lite-api.soeenplop.dev`**. The old hostnames are removed from Dokploy. The following follow the new hostnames:
+  - the api `CORS_ORIGIN` and the web `NEXT_PUBLIC_API_URL`, which requires a rebuild
+  - the Supabase Auth site URL and redirect allow-list
+  - the GitHub `WEB_URL` / `API_URL` variables
+- **Rationale:** Decision by the project owner: the hostnames match the project name.
+
+## 2026-11-12 — Deploys triggered by GitHub Actions; M6 pulled forward
+
+- **Scope:** Deployment (`docs/IMPLEMENTATION_PLAN.md` §8 and §10 M6, `docs/DEPLOYMENT.md`).
+- **Original decision:**
+  - Dokploy's GitHub integration auto-deploys on push to `main`.
+  - A separate GitHub Action applies migrations "before Dokploy deploys".
+  - M6 (deployment and hardening) comes after M5.
+- **Correction:**
+  - Dokploy apps use the public repository as a plain `git` source, with no auto-deploy webhook.
+  - `.github/workflows/deploy.yml` runs after CI passes on `main`: it applies migrations, runs the RLS tests, triggers the three Dokploy deployments, and smoke-tests production.
+  - M6 is implemented right after M1, as the plan recommended, so a walking skeleton goes live early.
+  - Hardening that depends on later features moves into those milestones: per-user limits for chat and podcasts, empty states for notebooks, sources and chats, and the authenticated Playwright journey (notebook → upload → ask → citation).
+- **Rationale:**
+  - With two independent triggers, migrations and deploys could race. One workflow guarantees schema → apps → verification.
+  - Deploying early surfaces infrastructure problems while the app is still small.
+  - The deferred items cannot be built or tested before their features exist.
+
 ## 2026-11-12 — Interim: magic-link emails until custom SMTP
 
 - **Scope:** Auth / sign-in (`docs/IMPLEMENTATION_PLAN.md` §5.1, `supabase/config.toml`).

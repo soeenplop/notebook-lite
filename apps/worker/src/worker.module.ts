@@ -1,6 +1,8 @@
 import { type DynamicModule, Module } from '@nestjs/common';
+import { LoggerModule } from 'nestjs-pino';
 import { ENV, type WorkerEnv } from './config/env.js';
 import { HealthController } from './health/health.controller.js';
+import { loggerParams } from './logging.js';
 
 /**
  * Root module of the background worker. Queue consumers (pg-boss) are added here in later
@@ -12,6 +14,7 @@ export class WorkerModule {
     return {
       module: WorkerModule,
       global: true,
+      imports: [LoggerModule.forRoot(loggerParams(env))],
       controllers: [HealthController],
       providers: [{ provide: ENV, useValue: env }],
       exports: [ENV],
