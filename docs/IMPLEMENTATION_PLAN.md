@@ -65,7 +65,7 @@ notebook-lite/
 │  ├─ shared/         zod schemas, types, constants, citation utils
 │  ├─ db/             generated Supabase types, typed query helpers, retrieval SQL
 │  ├─ ai/             prompts, model config, chunking, embedding, script generation
-│  └─ config/         shared tsconfig, ESLint, Prettier, Vitest presets
+│  └─ config/         shared tsconfig presets (oxlint + Prettier config in repo root)
 ├─ supabase/
 │  ├─ migrations/     SQL migrations (schema, RLS, storage policies, functions)
 │  ├─ tests/          pgTAP / SQL tests for RLS
@@ -206,7 +206,7 @@ Exception: `messages` reach their notebook through `chat_id` and have no `notebo
 | `ELEVENLABS_API_KEY`, `ELEVENLABS_MODEL_ID` (dialogue-capable model), `ELEVENLABS_VOICE_A`, `ELEVENLABS_VOICE_B` (voice IDs pending) | | | ✓ |
 | `CORS_ORIGIN` | | ✓ | |
 
-`.env.example` per app; real secrets only in Dokploy.
+One root `.env.example` lists all keys, grouped by app; local dev loads the root `.env`. Real secrets only in Dokploy.
 
 ## 8. Deployment
 
@@ -233,7 +233,7 @@ No test hits real OpenAI/ElevenLabs in CI.
 Each bullet ≈ one small, self-contained commit (lint, build, tests green).
 
 **M0 — Foundation**
-1. Root npm workspaces, `packages/config` (tsconfig, ESLint flat config, Prettier), root scripts, `.nvmrc`, `.gitignore`, `AGENTS.md`, `docs/CORRECTIONS.md`.
+1. Root npm workspaces, `packages/config` (tsconfig presets), oxlint (type-aware) + Prettier, root scripts, `.nvmrc`, `.gitignore`, `AGENTS.md`, `docs/CORRECTIONS.md`.
 2. `packages/shared` skeleton with Vitest.
 3. `apps/api` Nest skeleton + `/healthz` + env validation.
 4. `apps/worker` Nest standalone skeleton + health.

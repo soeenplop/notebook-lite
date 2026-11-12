@@ -14,7 +14,7 @@ Docs: [BRIEFING](docs/BRIEFING.md) · [IMPLEMENTATION_PLAN](docs/IMPLEMENTATION_
 - `packages/shared` — zod schemas, types, constants (source of truth for contracts)
 - `packages/db` — generated Supabase types, query helpers
 - `packages/ai` — prompts, model config, chunking, embeddings, script generation
-- `packages/config` — tsconfig / ESLint / Prettier / Vitest presets
+- `packages/config` — shared tsconfig presets (base, node, nest, next); oxlint (`.oxlintrc.json`) and Prettier configs live in the repo root
 - `supabase/` — migrations, RLS tests, config
 
 ## Commands
@@ -49,7 +49,7 @@ npm run db:types     # regenerate packages/db types after schema changes
 - **Contracts:** input/output schemas live in `packages/shared` (zod). The web imports the API router type type-only.
 - **Schema changes:** only via new files in `supabase/migrations/`; never edit an applied migration. Regenerate types afterwards.
 - **Tests:** Vitest; mock OpenAI/ElevenLabs (no real external calls in tests/CI).
-- **Secrets:** never commit them; document new env vars in the app's `.env.example`.
+- **Secrets:** never commit them; document every new env var in the root `.env.example`.
 - **URL fetching:** always through the SSRF-guarded fetcher.
 
 ## Working approach

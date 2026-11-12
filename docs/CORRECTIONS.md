@@ -6,6 +6,20 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-12 — One root `.env.example`
+
+- **Scope:** Configuration (`docs/IMPLEMENTATION_PLAN.md` §7, `AGENTS.md`).
+- **Original decision:** One `.env.example` per app.
+- **Correction:** A single `.env.example` in the repo root lists every key, grouped and commented by app. In local development every app loads the root `.env`. In production, Dokploy sets the variables per app.
+- **Rationale:** Requested by the project owner. One place to see every required key, and api and worker share most of them.
+
+## 2026-11-12 — oxlint instead of ESLint
+
+- **Scope:** Tooling (M0, `packages/config`, CI, `AGENTS.md`).
+- **Original decision:** ESLint flat config in `packages/config`.
+- **Correction:** Lint with **oxlint**, with type-aware rules through `oxlint-tsgolint`, configured in a root `.oxlintrc.json`. Prettier stays the formatter.
+- **Rationale:** ESLint and typescript-eslint are not fully compatible with TypeScript 7, the native compiler. oxlint's type-aware mode builds on the TypeScript 7 toolchain and is much faster.
+
 ## 2026-11-12 — Podcast TTS via ElevenLabs text-to-dialogue
 
 - **Scope:** Podcast generation, TTS step (`docs/IMPLEMENTATION_PLAN.md` §5.5, M5).
