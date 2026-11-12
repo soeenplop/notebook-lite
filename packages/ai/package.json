@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "4.0.116",
+    "@notebook-lite/shared": "0.0.0",
     "ai": "7.0.171",
     "gpt-tokenizer": "4.1.2",
     "zod": "4.6.7"
