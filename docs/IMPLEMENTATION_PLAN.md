@@ -51,7 +51,7 @@ Sharing/collaboration and multiple members per notebook, moving or copying sourc
 | Notebook ownership | Every child table also stores `user_id`, and a composite FK `(notebook_id, user_id) → notebooks(id, user_id)` keeps it consistent with the notebook owner. RLS stays a simple `user_id = auth.uid()`. | Cheap RLS checks with no joins. The DB cannot hold a child row whose owner differs from the notebook owner. A future sharing model can replace the policies without moving data. |
 | Notebook language | A fixed list of supported languages in `packages/shared` (`SUPPORTED_LANGUAGES`: code, display name, Postgres FTS `regconfig`, ElevenLabs language code, words per minute). The initial set is **`de` and `en`**. Prompts take the language as an explicit parameter. | One place to add a language. The language is never inferred from the question or the sources. |
 | Shared contracts | `packages/shared` holds zod schemas, enums, constants and the citation format; the API's `AppRouter` type is imported by the web app as a type-only import. | Single source of truth, no runtime coupling. |
-| Testing | Vitest everywhere (Nest via `unplugin-swc`), Playwright for a few E2E smoke flows, RLS tests against local Supabase. | One runner, fast. |
+| Testing | Vitest everywhere (Nest via `unplugin-swc`), Playwright for a few E2E smoke flows, RLS tests as pgTAP SQL against the remote project (`supabase test db --remote`), each file in a rolled-back transaction. | One runner, fast. No local Supabase stack (see CORRECTIONS). |
 
 ## 3. Repository Layout
 
@@ -76,7 +76,7 @@ notebook-lite/
 └─ package.json       npm workspaces, root scripts
 ```
 
-Root scripts: `lint`, `typecheck`, `test`, `build`, `dev` (all apps in parallel), `db:start`, `db:reset`, `db:types`.
+Root scripts: `lint`, `typecheck`, `test`, `build`, `dev` (all apps in parallel), `db:new`, `db:push`, `db:test`, `db:config`, `db:types`.
 
 ## 4. Data Model
 
@@ -111,9 +111,9 @@ Exception: `messages` reach their notebook through `chat_id` and have no `notebo
 
 ### 5.1 Auth
 
-- `/login`: email field → `signInWithOtp` → 6-digit code input → `verifyOtp`. Session via `@supabase/ssr` cookies; Next.js middleware protects app routes.
-- API `AuthGuard` (Nest) and tRPC `protectedProcedure` both reuse one `AuthService.verify(token)`.
-- Supabase email template switched to show the OTP code (`{{ .Token }}`), not a magic link.
+- `/login`: email field → `signInWithOtp` (with `emailRedirectTo` = `/auth/callback`) → "check your email" step that accepts **either** the 6-digit code (`verifyOtp`) **or** a click on the emailed link (PKCE: `/auth/callback?code=…` → `exchangeCodeForSession`). Session via `@supabase/ssr` cookies; the Next.js proxy (formerly middleware) refreshes the session and protects app routes.
+- API `AuthGuard` (Nest) and tRPC `protectedProcedure` both reuse one `AuthService.verify(token)`, which verifies the ES256 access token against the project's JWKS.
+- **Interim:** until a custom SMTP provider is configured, Supabase sends its default *link* emails (custom templates are not available on the free tier without custom SMTP). Once SMTP is set up, enable the prepared code template (`supabase/templates/otp.html`) in `config.toml` and run `npm run db:config`; the login UI already supports codes.
 
 ### 5.2 Notebooks
 
@@ -197,10 +197,10 @@ Exception: `messages` reach their notebook through `chat_id` and have no `notebo
 
 | Var | web | api | worker |
 |---|:-:|:-:|:-:|
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable key) | ✓ | | |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✓ | | |
 | `NEXT_PUBLIC_API_URL` | ✓ | | |
-| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | | ✓ | ✓ |
-| `SUPABASE_SERVICE_ROLE_KEY` (secret key) | | ✓ (enqueue only, if needed) | ✓ |
+| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | | ✓ | ✓ |
+| `SUPABASE_SECRET_KEY` | | ✓ (enqueue only, if needed) | ✓ |
 | `DATABASE_URL` (direct connection, for pg-boss) | | ✓ | ✓ |
 | `OPENAI_API_KEY`, `OPENAI_CHAT_MODEL=gpt-6.1-terra`, `OPENAI_EMBEDDING_MODEL=text-embedding-3-large` | | ✓ | ✓ |
 | `ELEVENLABS_API_KEY`, `ELEVENLABS_MODEL_ID` (dialogue-capable model), `ELEVENLABS_VOICE_A`, `ELEVENLABS_VOICE_B` (voice IDs pending) | | | ✓ |
@@ -213,18 +213,18 @@ One root `.env.example` lists all keys, grouped by app; local dev loads the root
 - **Dokploy** project `notebook-lite` on `dokploy.soeenplop.dev` with three applications: `web`, `api`, `worker`, each built from `docker/<app>.Dockerfile` (multi-stage, `npm ci` with workspaces, prune to production deps). Worker image includes `ffmpeg`.
 - GitHub integration with **auto-deploy on push to `main`**; set up via the Dokploy CLI and documented in `docs/DEPLOYMENT.md`.
 - Domains: **`notebook.soeenplop.dev`** → web, **`notebook-api.soeenplop.dev`** → api (Traefik/HTTPS through Dokploy). The worker has no public domain. API `CORS_ORIGIN=https://notebook.soeenplop.dev`. The Supabase Auth site URL and redirect allow-list point to the web domain.
-- **Supabase Cloud**: one project for production and the local Supabase CLI stack for development. pg-boss uses the direct (session) connection string. Migrations are applied with `supabase db push` from a GitHub Action on `main` *before* Dokploy deploys (or as a gated manual step initially).
-- **CI (GitHub Actions)** on PRs and `main`: `npm ci` → lint → typecheck → test → build; RLS tests against `supabase start`.
+- **Supabase Cloud**: one remote project `notebook-lite` (ref `tmwmklntjantjchkhmrg`, eu-west-3), used for development and production; there is no local Supabase stack. Auth config and email templates are pushed with `supabase config push`. pg-boss uses the direct (session) connection string. Migrations are applied with `supabase db push` from a GitHub Action on `main` *before* Dokploy deploys (or as a gated manual step initially).
+- **CI (GitHub Actions)** on PRs and `main`: `npm ci` → lint → typecheck → test → build; RLS tests (`supabase test db --remote`) need a `SUPABASE_ACCESS_TOKEN` secret and are added to CI with the deployment work (M6); until then they run locally before every DB-related commit.
 
 ## 9. Testing Strategy
 
 | Layer | What | Tool |
 |---|---|---|
 | Unit | chunker, citation parser/validator, prompt builders, word-count targets, URL/SSRF guard, extractors (fixture PDF/DOCX/MD/HTML) | Vitest |
-| Integration | tRPC routers & chat controller with mocked AI SDK provider (`MockLanguageModelV2`) and local Supabase | Vitest + Supabase CLI |
+| Integration | tRPC routers & chat controller with mocked AI SDK provider and a mocked Supabase client | Vitest |
 | RLS | user A cannot read/write user B's notebooks, sources, chunks, chats, messages, podcasts, storage objects; cross-user and cross-notebook `chat_sources`/`podcast_sources` inserts rejected; notebook delete cascades; FTS recomputed on language change | pgTAP or Vitest with two JWTs |
 | Worker | ingestion & podcast jobs end-to-end with mocked OpenAI/ElevenLabs | Vitest |
-| E2E smoke | login (OTP via local Inbucket/Mailpit), upload MD, ask question, see citation | Playwright |
+| E2E smoke | login (test user session created via the admin API), upload MD, ask question, see citation | Playwright |
 
 No test hits real OpenAI/ElevenLabs in CI.
 
