@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "build:packages": "npm run build -w @notebook-lite/shared",
+    "dev": "npm run build:packages && concurrently -k -n shared,api -c gray,blue \"npm run dev -w @notebook-lite/shared\" \"npm run dev -w @notebook-lite/api\"",
     "lint": "oxlint --type-aware --deny-warnings && prettier --check .",
     "format": "oxlint --type-aware --fix && prettier --write .",
     "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@types/node": "26.6.6",
+    "concurrently": "10.0.7",
     "oxlint": "1.93.0",
     "oxlint-tsgolint": "7.0.2007",
     "prettier": "3.10.1",
