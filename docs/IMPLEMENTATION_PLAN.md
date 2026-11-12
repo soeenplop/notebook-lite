@@ -210,10 +210,10 @@ One root `.env.example` lists all keys, grouped by app; local dev loads the root
 
 ## 8. Deployment
 
-- **Dokploy** project `notebook-lite` on `dokploy.soeenplop.dev` with three applications: `web`, `api`, `worker`, each built from `docker/<app>.Dockerfile` (multi-stage, `npm ci` with workspaces, prune to production deps). Worker image includes `ffmpeg`.
-- GitHub integration with **auto-deploy on push to `main`**; set up via the Dokploy CLI and documented in `docs/DEPLOYMENT.md`.
+- **Dokploy** project `notebook-lite` on `dokploy.soeenplop.dev` with three applications: `web`, `api`, `worker`, each built from `docker/<app>.Dockerfile` (multi-stage, `npm ci` with workspaces, production deps only; web uses Next.js standalone output). The worker image gets `ffmpeg` with the podcast pipeline (M5).
+- **Deploy on push to `main`** via `.github/workflows/deploy.yml` after CI: migrations + RLS tests → Dokploy deploy (api, worker, web; public repo as `git` source, no Dokploy auto-deploy) → production smoke test. Details in `docs/DEPLOYMENT.md`.
 - Domains: **`notebook.soeenplop.dev`** → web, **`notebook-api.soeenplop.dev`** → api (Traefik/HTTPS through Dokploy). The worker has no public domain. API `CORS_ORIGIN=https://notebook.soeenplop.dev`. The Supabase Auth site URL and redirect allow-list point to the web domain.
-- **Supabase Cloud**: one remote project `notebook-lite` (ref `tmwmklntjantjchkhmrg`, eu-west-3), used for development and production; there is no local Supabase stack. Auth config and email templates are pushed with `supabase config push`. pg-boss uses the direct (session) connection string. Migrations are applied with `supabase db push` from a GitHub Action on `main` *before* Dokploy deploys (or as a gated manual step initially).
+- **Supabase Cloud**: one remote project `notebook-lite` (ref `tmwmklntjantjchkhmrg`, eu-west-3), used for development and production; there is no local Supabase stack. Auth config and email templates are pushed with `supabase config push`. pg-boss uses the direct (session) connection string. Migrations are applied with `supabase db push` by the deploy workflow *before* the Dokploy deployments are triggered.
 - **CI (GitHub Actions)** on PRs and `main`: `npm ci` → lint → typecheck → test → build; RLS tests (`supabase test db --remote`) need a `SUPABASE_ACCESS_TOKEN` secret and are added to CI with the deployment work (M6); until then they run locally before every DB-related commit.
 
 ## 9. Testing Strategy
@@ -280,12 +280,12 @@ Each bullet ≈ one small, self-contained commit (lint, build, tests green).
 
 **M6 — Deployment & Hardening**
 35. Dockerfiles for web/api/worker.
-36. Dokploy project + apps + auto-deploy via CLI; `docs/DEPLOYMENT.md`.
-37. Migration GitHub Action.
-38. Rate limiting, structured logging, error states, empty states.
-39. Playwright smoke test (login → create notebook → upload MD → ask → citation).
+36. Dokploy project + apps via CLI; `docs/DEPLOYMENT.md`.
+37. Deploy workflow: migrations → Dokploy deploy → production smoke.
+38. Rate limiting (global per IP), structured logging, security headers, error/not-found pages.
+39. Playwright smoke test of the signed-out experience, in CI and against production.
 
-(Deployment can be pulled forward right after M1 to get a walking skeleton live early — recommended.)
+**Implemented right after M1** (walking skeleton). Items that depend on later features move into those milestones: per-user limits for chat/podcast procedures (M4/M5), empty states (M2–M5), and the authenticated Playwright journey login → create notebook → upload MD → ask → citation (M4).
 
 ## 11. Risks
 
