@@ -21,17 +21,25 @@ Docs: [BRIEFING](docs/BRIEFING.md) · [IMPLEMENTATION_PLAN](docs/IMPLEMENTATION_
 
 ```bash
 npm install
-npm run dev          # all apps
-npm run lint
+cp .env.example .env # local config, shared by all apps
+npm run dev          # shared watcher + api :4000 + worker :4001 + web :3000
+npm run lint         # oxlint (type-aware) + prettier --check
+npm run format       # oxlint --fix + prettier --write
 npm run typecheck
 npm run test
 npm run build
+# from M1:
 npm run db:start     # local Supabase
 npm run db:reset     # re-apply migrations + seed
 npm run db:types     # regenerate packages/db types after schema changes
 ```
 
 ## Stack facts
+
+- Node 26, TypeScript 7 (native `tsc`, no JS compiler API). ESM everywhere.
+- NestJS 12 apps are built with plain `tsc`, not the Nest CLI (which pins TypeScript 6). Next.js type-checks via the `tsc` CLI.
+- `packages/shared` is consumed from its `dist/`. Root `typecheck`/`test`/`dev` build it first (`npm run build:packages`).
+- shadcn/ui uses the `base-nova` style (Base UI primitives). Add components with `npx shadcn@latest add <name> -c apps/web`.
 
 - LLM: OpenAI `gpt-6.1-terra` via Vercel AI SDK; embeddings `text-embedding-3-large` stored as `halfvec(3072)`.
 - Supabase: Postgres + pgvector, Storage (private buckets `sources`, `podcasts`, path `{user_id}/{notebook_id}/…`), Auth via email OTP.
