@@ -1,3 +1,4 @@
+import { aiEnvSchema } from '@notebook-lite/ai';
 import { z } from 'zod';
 
 export const ENV = Symbol('ENV');
@@ -21,6 +22,12 @@ export const apiEnvSchema = z.object({
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
   /** Requests per minute and client IP across the whole API. */
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(300),
+  /** Podcast topic suggestions per user and hour (each is a synchronous LLM call). */
+  PODCAST_SUGGESTIONS_PER_HOUR: z.coerce.number().int().min(1).default(20),
+  /** Podcasts a user may create per day (on top of one in production at a time). */
+  PODCASTS_PER_DAY: z.coerce.number().int().min(1).default(10),
+  // OpenAI (topic suggestions; chat in M4)
+  ...aiEnvSchema.shape,
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

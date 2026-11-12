@@ -5,6 +5,7 @@ const supabase = {
   SUPABASE_URL: 'https://ref.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_x',
   DATABASE_URL: 'postgresql://postgres:secret@db.example.com:5432/postgres',
+  OPENAI_API_KEY: 'sk-test',
 };
 
 describe('loadEnv', () => {
@@ -22,6 +23,11 @@ describe('loadEnv', () => {
       CORS_ORIGIN: ['http://localhost:3000', 'https://notebook-lite.soeenplop.dev'],
       LOG_LEVEL: 'info',
       RATE_LIMIT_PER_MINUTE: 300,
+      PODCAST_SUGGESTIONS_PER_HOUR: 20,
+      PODCASTS_PER_DAY: 10,
+      OPENAI_API_KEY: 'sk-test',
+      OPENAI_CHAT_MODEL: 'gpt-6.1-terra',
+      OPENAI_EMBEDDING_MODEL: 'text-embedding-3-large',
     });
   });
 
@@ -40,5 +46,9 @@ describe('loadEnv', () => {
       /Invalid API environment/,
     );
     expect(() => loadEnv({ CORS_ORIGIN: 'http://localhost:3000' })).toThrow(/SUPABASE_URL/);
+    const { OPENAI_API_KEY: _key, ...withoutOpenAi } = supabase;
+    expect(() => loadEnv({ ...withoutOpenAi, CORS_ORIGIN: 'http://localhost:3000' })).toThrow(
+      /OPENAI_API_KEY/,
+    );
   });
 });

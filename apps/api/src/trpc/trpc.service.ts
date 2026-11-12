@@ -1,22 +1,35 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { AiModels } from '@notebook-lite/ai';
 import { TRPCError } from '@trpc/server';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { JobQueue } from '@notebook-lite/queue';
+import { AI_MODELS } from '../ai/ai-models.provider.js';
 import { AuthService } from '../auth/auth.service.js';
 import { UnauthorizedError } from '../auth/auth.types.js';
+import { type ApiEnv, ENV } from '../config/env.js';
 import { SupabaseService } from '../supabase/supabase.service.js';
 import { appRouter } from './app-router.js';
-import type { TrpcContext } from './context.js';
+import type { RequestLimits, TrpcContext } from './context.js';
+import { MemoryUserRateLimiter } from './user-rate-limiter.js';
 
 @Injectable()
 export class TrpcService {
   private readonly logger = new Logger('tRPC');
+  private readonly rateLimiter = new MemoryUserRateLimiter();
+  private readonly limits: RequestLimits;
 
   constructor(
     private readonly auth: AuthService,
     private readonly supabase: SupabaseService,
     private readonly queue: JobQueue,
-  ) {}
+    @Inject(AI_MODELS) private readonly ai: AiModels,
+    @Inject(ENV) env: ApiEnv,
+  ) {
+    this.limits = {
+      podcastSuggestionsPerHour: env.PODCAST_SUGGESTIONS_PER_HOUR,
+      podcastsPerDay: env.PODCASTS_PER_DAY,
+    };
+  }
 
   /** Express middleware serving the tRPC router (mounted at /trpc). */
   middleware() {
@@ -29,6 +42,9 @@ export class TrpcService {
             user,
             supabase: user ? this.supabase.forUser(user.accessToken) : null,
             jobs: this.queue,
+            ai: this.ai,
+            rateLimiter: this.rateLimiter,
+            limits: this.limits,
           };
         } catch (error) {
           if (error instanceof UnauthorizedError) {
