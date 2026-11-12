@@ -12,6 +12,7 @@ import { createSupabaseJwks, JWKS } from './auth/jwks.js';
 import { type ApiEnv, ENV } from './config/env.js';
 import { HealthController } from './health/health.controller.js';
 import { loggerParams } from './logging.js';
+import { JobQueueShutdown, jobQueueProvider } from './queue/job-queue.provider.js';
 import { SupabaseService } from './supabase/supabase.service.js';
 import { TrpcMiddleware } from './trpc/trpc.middleware.js';
 import { TrpcService } from './trpc/trpc.service.js';
@@ -30,6 +31,8 @@ export class AppModule implements NestModule {
         AuthService,
         AuthGuard,
         SupabaseService,
+        jobQueueProvider,
+        JobQueueShutdown,
         TrpcService,
       ],
       exports: [ENV, AuthService, AuthGuard, SupabaseService],

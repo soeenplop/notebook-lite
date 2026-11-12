@@ -4,6 +4,7 @@ import { loadEnv } from './env.js';
 const supabase = {
   SUPABASE_URL: 'https://ref.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_x',
+  DATABASE_URL: 'postgresql://postgres:secret@db.example.com:5432/postgres',
 };
 
 describe('loadEnv', () => {
@@ -16,6 +17,7 @@ describe('loadEnv', () => {
     expect(env).toEqual({
       SUPABASE_URL: 'https://ref.supabase.co',
       SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_x',
+      DATABASE_URL: 'postgresql://postgres:secret@db.example.com:5432/postgres',
       API_PORT: 4000,
       CORS_ORIGIN: ['http://localhost:3000', 'https://notebook-lite.soeenplop.dev'],
       LOG_LEVEL: 'info',
@@ -31,6 +33,9 @@ describe('loadEnv', () => {
 
   it('fails fast on missing or invalid values', () => {
     expect(() => loadEnv({})).toThrow(/CORS_ORIGIN/);
+    expect(() =>
+      loadEnv({ ...supabase, CORS_ORIGIN: 'http://localhost:3000', DATABASE_URL: 'mysql://x' }),
+    ).toThrow(/DATABASE_URL/);
     expect(() => loadEnv({ ...supabase, CORS_ORIGIN: 'not a url' })).toThrow(
       /Invalid API environment/,
     );
