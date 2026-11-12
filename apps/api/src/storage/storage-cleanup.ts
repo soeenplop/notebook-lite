@@ -32,7 +32,7 @@ export async function listObjectPaths(db: Db, bucket: string, folder: string): P
       if (data.length < PAGE_SIZE) break;
     }
   }
-  return paths;
+  return paths.toSorted();
 }
 
 /** Deletes every object below `folder` in `bucket`. Returns the number of deleted objects. */
