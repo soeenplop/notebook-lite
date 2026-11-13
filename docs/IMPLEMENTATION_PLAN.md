@@ -175,7 +175,7 @@ Exception: `messages` reach their notebook through `chat_id` and have no `notebo
      - Spike results (see CORRECTIONS): ≤ 2,000 characters per request, `language_code` (ISO 639-1), model `eleven_v3`, output `mp3_44100_128`.
    - **Store**: upload `podcasts/{uid}/{notebookId}/{podcastId}/podcast.mp3` (batches `batch-{n}.mp3` in the same folder), set `duration_seconds`, `status = 'ready'`.
    - Persist the script in `podcasts.script` so TTS can be retried without regenerating text.
-5. **Web**: podcast list with progress status (polling), audio player via short-lived signed URL, download button, script transcript view.
+5. **Web**: podcast list with progress status (live over SSE, see CORRECTIONS), audio player via short-lived signed URL, download button, script transcript view.
 
 ### 5.6 Cross-cutting
 

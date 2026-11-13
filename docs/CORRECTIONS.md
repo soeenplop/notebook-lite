@@ -6,6 +6,13 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Podcast status: live over SSE instead of polling
+
+- **Scope:** Podcast list and detail page (`apps/web`), `podcasts.onChange` tRPC subscription (`apps/api`), trigger on `public.podcasts` (`docs/IMPLEMENTATION_PLAN.md` §M5 "progress status (polling)").
+- **Original decision:** The web polls `podcasts.list`/`podcasts.get` every 4 s while a podcast is in production.
+- **Correction:** Status changes are pushed over **SSE** through a tRPC subscription (`httpSubscriptionLink`). A trigger on `public.podcasts` sends `pg_notify('podcast_changes', …)` when the status or title changes. The API holds one `LISTEN` connection per process and fans out notifications by `user_id`. Events carry only ids and the status, and the web refetches `list`/`get` through RLS when one arrives. It also refetches on every (re)connect, and when the server's listener reconnects it sends a `resync` event. The browser sends the access token as an `Authorization` header through the `eventsource` package, not in the URL.
+- **Rationale:** The project owner asked for live updates without polling. Postgres NOTIFY needs no new infrastructure: it comes from the database's own commit, so the worker stays unchanged, and it works on the direct connection the API already uses for pg-boss. Supabase Realtime would have needed a publication, RLS-aware realtime auth in the API and a second client library.
+
 ## 2026-11-13 — Podcast speakers: 10 % faster
 
 - **Scope:** Podcast audio (`apps/worker` ffmpeg step) and script length (`podcastWordTarget` in `packages/shared`).
