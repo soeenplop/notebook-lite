@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTRPC } from '@/lib/trpc/react';
+import { Markdown } from './markdown';
 
 function pageLabel(start: number | null, end: number | null): string | null {
   if (start === null) return null;
@@ -74,8 +75,8 @@ function Passage({ citation }: { citation: Citation }) {
             <Skeleton className="h-4 w-2/3" />
           </div>
         ) : chunk.data ? (
-          <blockquote className="rounded-lg border-l-4 border-primary bg-primary/5 p-3 text-sm leading-relaxed whitespace-pre-wrap">
-            {chunk.data.content}
+          <blockquote className="rounded-lg border-l-4 border-primary bg-primary/5 p-3">
+            <Markdown text={chunk.data.content} className="text-sm leading-relaxed break-words" />
           </blockquote>
         ) : (
           <div className="grid gap-3">
@@ -84,8 +85,8 @@ function Passage({ citation }: { citation: Citation }) {
                 ? 'The source was deleted. This is the excerpt saved with the answer.'
                 : `Could not load the passage: ${chunk.error?.message ?? 'unknown error'}`}
             </p>
-            <blockquote className="rounded-lg border-l-4 bg-muted p-3 text-sm leading-relaxed whitespace-pre-wrap">
-              {citation.quote}
+            <blockquote className="rounded-lg border-l-4 bg-muted p-3">
+              <Markdown text={citation.quote} className="text-sm leading-relaxed break-words" />
             </blockquote>
           </div>
         )}

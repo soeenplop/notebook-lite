@@ -11,8 +11,11 @@ import type { MatchedChunk } from '@notebook-lite/db';
 import { type Citation, type LanguageCode, toCitationQuote } from '@notebook-lite/shared';
 import type { Db } from '../supabase/types.js';
 
-/** Candidates returned by `match_chunks` after RRF fusion, before the token budget. */
-export const RETRIEVAL_MATCH_COUNT = 12;
+/**
+ * Candidates returned by `match_chunks` after RRF fusion, before the token budget. Sized so
+ * that ~450-token chunks roughly fill `CONTEXT_MAX_TOKENS`.
+ */
+export const RETRIEVAL_MATCH_COUNT = 20;
 
 export interface RetrieveOptions {
   /** The caller's RLS-scoped client: `match_chunks` is security invoker. */
