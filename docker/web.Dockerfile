@@ -16,6 +16,8 @@ COPY package.json package-lock.json ./
 COPY packages/config/package.json packages/config/
 COPY packages/shared/package.json packages/shared/
 COPY packages/db/package.json packages/db/
+# The API router type (type-only import) references @notebook-lite/ai types.
+COPY packages/ai/package.json packages/ai/
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 RUN npm ci --ignore-scripts --no-audit --no-fund \
@@ -34,7 +36,7 @@ COPY packages packages
 # The web app type-checks against the API router type (type-only import).
 COPY apps/api apps/api
 COPY apps/web apps/web
-RUN npm run build -w @notebook-lite/shared -w @notebook-lite/db -w @notebook-lite/web
+RUN npm run build -w @notebook-lite/shared -w @notebook-lite/db -w @notebook-lite/ai -w @notebook-lite/web
 
 # --- runtime -------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS runtime
