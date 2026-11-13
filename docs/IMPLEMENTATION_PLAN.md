@@ -172,8 +172,8 @@ Exception: `messages` reach their notebook through `chat_id` and have no `notebo
      - The script is split at segment boundaries into batches below the endpoint's per-request character limit. A 15-minute script needs several requests.
      - Each batch is synthesized with retries, and the resulting MP3s are concatenated with `ffmpeg` (concat demuxer, re-encoded to a uniform 128 kbps).
      - Each batch's audio is cached in Storage so a failed job resumes instead of starting over.
-     - The exact character limit, the language parameter, and the model ID are confirmed in a short spike at the start of M5.
-   - **Store**: upload `podcasts/{uid}/{notebookId}/{podcastId}.mp3`, set `duration_seconds`, `status = 'ready'`.
+     - Spike results (see CORRECTIONS): ≤ 2,000 characters per request, `language_code` (ISO 639-1), model `eleven_v3`, output `mp3_44100_128`.
+   - **Store**: upload `podcasts/{uid}/{notebookId}/{podcastId}/podcast.mp3` (batches `batch-{n}.mp3` in the same folder), set `duration_seconds`, `status = 'ready'`.
    - Persist the script in `podcasts.script` so TTS can be retried without regenerating text.
 5. **Web**: podcast list with progress status (polling), audio player via short-lived signed URL, download button, script transcript view.
 
