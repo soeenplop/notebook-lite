@@ -92,6 +92,7 @@ export function testContext(
     ai: unusedAiModels,
     rateLimiter: new MemoryUserRateLimiter(),
     limits: { podcastSuggestionsPerHour: 20, podcastsPerDay: 10 },
+    podcastChanges: { subscribe: () => () => undefined },
     ...overrides,
   };
 }

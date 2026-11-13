@@ -1,5 +1,5 @@
 import type { AiModels } from '@notebook-lite/ai';
-import type { JobData, QueueName } from '@notebook-lite/shared';
+import type { JobData, PodcastChangeNotification, QueueName } from '@notebook-lite/shared';
 import type { AuthUser } from '../auth/auth.types.js';
 import type { Db } from '../supabase/types.js';
 import type { UserRateLimiter } from './user-rate-limiter.js';
@@ -16,6 +16,16 @@ export interface TrpcContext {
   /** Per-user limits for expensive procedures. */
   rateLimiter: UserRateLimiter;
   limits: RequestLimits;
+  /** Live podcast status changes (Postgres LISTEN), for the `podcasts.onChange` subscription. */
+  podcastChanges: PodcastChangeFeed;
+}
+
+export type PodcastFeedEvent =
+  { type: 'changed'; change: PodcastChangeNotification } | { type: 'resync' };
+
+export interface PodcastChangeFeed {
+  /** Calls `listener` for changes to `userId`'s podcasts. Returns the unsubscribe function. */
+  subscribe(userId: string, listener: (event: PodcastFeedEvent) => void): () => void;
 }
 
 /** Per-user quotas, configured through the environment. */

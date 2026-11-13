@@ -15,7 +15,7 @@ export const PODCAST_STATUSES = ['queued', 'scripting', 'synthesizing', 'ready',
 export const podcastStatusSchema = z.enum(PODCAST_STATUSES);
 export type PodcastStatus = z.infer<typeof podcastStatusSchema>;
 
-/** Statuses of a podcast that is still being produced (the web polls while any exists). */
+/** Statuses of a podcast that is still being produced. */
 export const ACTIVE_PODCAST_STATUSES = [
   'queued',
   'scripting',
@@ -137,6 +137,26 @@ export type CreatePodcastInput = z.input<typeof createPodcastInputSchema>;
 
 export const listPodcastsInputSchema = z.object({ notebookId: notebookIdSchema });
 export const podcastByIdInputSchema = z.object({ id: podcastIdSchema });
+
+/** Postgres NOTIFY channel a trigger on public.podcasts writes to on status or title changes. */
+export const PODCAST_CHANGES_CHANNEL = 'podcast_changes';
+
+/** Payload of a `PODCAST_CHANGES_CHANNEL` notification (built by `notify_podcast_change()`). */
+export const podcastChangeNotificationSchema = z.object({
+  userId: z.uuid(),
+  notebookId: notebookIdSchema,
+  podcastId: podcastIdSchema,
+  status: podcastStatusSchema,
+});
+export type PodcastChangeNotification = z.infer<typeof podcastChangeNotificationSchema>;
+
+/**
+ * Event of the `podcasts.onChange` subscription. `changed`: a podcast's status or title changed.
+ * `resync`: the server may have missed changes (its database listener reconnected), so clients
+ * refetch whatever they show.
+ */
+export type PodcastChangeEvent =
+  { type: 'changed'; podcastId: string; status: PodcastStatus } | { type: 'resync' };
 
 /** A source the podcast wizard can offer (ready sources of the notebook). */
 export const podcastSourceOptionSchema = z.object({
