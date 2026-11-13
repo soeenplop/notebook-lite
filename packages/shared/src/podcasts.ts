@@ -107,12 +107,8 @@ export const podcastTopicSuggestionSchema = z.object({
 });
 export type PodcastTopicSuggestion = z.infer<typeof podcastTopicSuggestionSchema>;
 
+/** Topics suggested per request; they are streamed to the client one by one. */
 export const PODCAST_TOPIC_SUGGESTION_COUNT = 3;
-
-export const podcastTopicSuggestionsSchema = z.object({
-  topics: z.array(podcastTopicSuggestionSchema).length(PODCAST_TOPIC_SUGGESTION_COUNT),
-});
-export type PodcastTopicSuggestions = z.infer<typeof podcastTopicSuggestionsSchema>;
 
 export const suggestPodcastTopicsInputSchema = z.object({
   notebookId: notebookIdSchema,

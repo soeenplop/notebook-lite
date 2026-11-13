@@ -5,12 +5,13 @@ import {
   type PodcastScript,
   type PodcastSegment,
   type PodcastTopicSuggestion,
+  PODCAST_TOPIC_SUGGESTION_COUNT,
   podcastScriptSchema,
-  podcastTopicSuggestionsSchema,
+  podcastTopicSuggestionSchema,
   podcastWordTarget,
   stripAudioTags,
 } from '@notebook-lite/shared';
-import { generateText, type LanguageModel, Output } from 'ai';
+import { generateText, type LanguageModel, Output, streamText } from 'ai';
 import { z } from 'zod';
 import {
   type OutlineSection,
@@ -40,23 +41,45 @@ function callSettings(options: CallOptions) {
 
 // --- topic suggestions --------------------------------------------------------
 
-/** Suggests exactly three podcast topics from source excerpts, in the notebook language. */
-export async function suggestPodcastTopics(
+/**
+ * Reasoning effort for topic suggestions. Picking three topics from excerpts needs little
+ * reasoning, and the default effort made users wait several seconds before the first token.
+ */
+export const TOPIC_REASONING_EFFORT = 'low';
+
+/**
+ * Streams three podcast topics from source excerpts, in the notebook language. Each topic is
+ * yielded as soon as the model has finished it, so the UI can show the first one early.
+ */
+export async function* streamPodcastTopics(
   model: LanguageModel,
   input: { language: LanguageCode; excerpts: readonly PodcastExcerpt[] } & CallOptions,
-): Promise<PodcastTopicSuggestion[]> {
+): AsyncGenerator<PodcastTopicSuggestion, void, undefined> {
   if (input.excerpts.length === 0) throw new Error('no excerpts to suggest topics from');
-  const { output } = await generateText({
+  let failure: unknown;
+  const result = streamText({
     model,
     system: topicSuggestionsSystemPrompt(input.language),
     prompt: topicSuggestionsUserPrompt(input.excerpts),
-    output: Output.object({ schema: podcastTopicSuggestionsSchema }),
+    output: Output.array({
+      element: podcastTopicSuggestionSchema,
+      minItems: PODCAST_TOPIC_SUGGESTION_COUNT,
+      maxItems: PODCAST_TOPIC_SUGGESTION_COUNT,
+    }),
+    providerOptions: { openai: { reasoningEffort: TOPIC_REASONING_EFFORT } },
+    // streamText reports errors here instead of throwing them from the element stream.
+    onError: ({ error }) => {
+      failure ??= error;
+    },
     ...callSettings(input),
   });
-  return output.topics.map((topic) => ({
-    title: cleanSpokenText(topic.title),
-    angle: cleanSpokenText(topic.angle),
-  }));
+  let count = 0;
+  for await (const topic of result.elementStream) {
+    yield { title: cleanSpokenText(topic.title), angle: cleanSpokenText(topic.angle) };
+    if (++count === PODCAST_TOPIC_SUGGESTION_COUNT) return;
+  }
+  if (failure !== undefined) throw failure;
+  if (count === 0) throw new Error('the model suggested no topics');
 }
 
 // --- scripts ------------------------------------------------------------------

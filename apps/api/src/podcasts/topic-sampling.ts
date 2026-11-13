@@ -2,10 +2,13 @@ import type { PodcastExcerpt } from '@notebook-lite/ai';
 import type { Db } from '../supabase/types.js';
 import { toTrpcError } from '../trpc/db-errors.js';
 
-/** Chunks sampled for topic suggestions across all selected sources. */
-export const SAMPLE_CHUNKS = 16;
+/**
+ * Chunks sampled for topic suggestions across all selected sources. Kept small: the prompt
+ * length dominates the time to the first topic, and three topics need only an overview.
+ */
+export const SAMPLE_CHUNKS = 8;
 /** Token budget of the sample (chunks are ~800 tokens). */
-export const SAMPLE_TOKEN_BUDGET = 14_000;
+export const SAMPLE_TOKEN_BUDGET = 6_000;
 /** Leading chunks of a source always included (they usually state what it is about). */
 const LEADING_CHUNKS = 2;
 

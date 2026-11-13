@@ -6,6 +6,16 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Podcast topic suggestions: smaller sample, low reasoning effort, streamed
+
+- **Scope:** Podcast topic suggestions (`podcasts.suggestTopics`, `packages/ai` `streamPodcastTopics`, the wizard's topic step).
+- **Original decision:** Sample up to 16 chunks / ~14k tokens, ask the chat model with its default reasoning effort for an object with exactly three topics, and return all three at once from a tRPC mutation (see the M5 entry below).
+- **Correction:**
+  - The sample is at most 8 chunks / ~6k tokens (still the first two chunks per source plus an even spread).
+  - The call sets `reasoningEffort: 'low'` (`TOPIC_REASONING_EFFORT`).
+  - The topics are streamed: `streamText` with `Output.array` yields each topic as soon as it is complete, the procedure returns an async iterable, and the web client sends this procedure through `httpBatchStreamLink` (all others keep `httpBatchLink`). Checks (sources, rate limit, empty sample) still run before the stream starts and fail as ordinary errors; failures mid-stream become a generic `INTERNAL_SERVER_ERROR`. Aborting on the client aborts the LLM call.
+- **Rationale:** Suggestions took long enough to feel broken. Prompt length and default reasoning dominated the time to the first token, and three topics need only an overview of the sources and little reasoning. Streaming shows the first topic after roughly a third of the generation time.
+
 ## 2026-11-13 — Podcast scripts: personalities, hook, audio tags
 
 - **Scope:** Podcast script prompts and cleanup (`packages/ai/src/podcast-prompts.ts`, `podcasts.ts`), transcript (`apps/web`).
