@@ -82,7 +82,7 @@ export function PodcastList({ notebookId }: { notebookId: string }) {
         </div>
       )}
       {podcasts.data && podcasts.data.length > 0 && (
-        <ul className="grid gap-3">
+        <ul className="grid grid-cols-1 gap-3">
           {podcasts.data.map((podcast) => (
             <li key={podcast.id}>
               <PodcastRow notebookId={notebookId} podcast={podcast} />
@@ -101,10 +101,15 @@ function PodcastRow({ notebookId, podcast }: { notebookId: string; podcast: Podc
   return (
     <Link
       href={`/notebooks/${notebookId}/podcasts/${podcast.id}`}
-      className="grid gap-1 rounded-xl border p-4 transition-colors hover:bg-muted/50"
+      className="grid min-w-0 grid-cols-1 gap-1 rounded-xl border p-4 transition-colors hover:bg-muted/50"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="min-w-0 truncate font-medium">{podcast.title ?? podcast.topic}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className="min-w-0 flex-1 truncate font-medium"
+          title={podcast.title ?? podcast.topic}
+        >
+          {podcast.title ?? podcast.topic}
+        </span>
         <PodcastStatusBadge status={podcast.status} />
       </div>
       <p className="text-xs text-muted-foreground">
@@ -114,7 +119,7 @@ function PodcastRow({ notebookId, podcast }: { notebookId: string; podcast: Podc
           : ''} · {formatDate(podcast.createdAt)}
       </p>
       {podcast.status === 'failed' && podcast.error && (
-        <p className="text-sm text-destructive">{podcast.error}</p>
+        <p className="text-sm break-words text-destructive">{podcast.error}</p>
       )}
       {active && (
         <p className="text-xs text-muted-foreground">

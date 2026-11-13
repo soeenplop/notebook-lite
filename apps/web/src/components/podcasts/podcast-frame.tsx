@@ -14,7 +14,7 @@ export function PodcastFrame({
   children: ReactNode;
 }) {
   return (
-    <main className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-8">
+    <main className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-6 px-4 py-8">
       <Link
         href={backHref}
         className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
