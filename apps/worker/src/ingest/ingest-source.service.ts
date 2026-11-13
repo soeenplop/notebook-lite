@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   type AiModels,
   chunkDocument,
+  chunkEmbeddingText,
   embedTexts,
   type TextChunk,
   toVectorLiteral,
@@ -87,17 +88,18 @@ export class IngestSourceService {
         throw new IngestError('The source is too long to process.');
       }
 
+      const title = extraction.title?.trim().slice(0, SOURCE_TITLE_MAX_LENGTH).trim();
+
       await this.assertExists(job);
       const { embeddings } = await embedTexts(
         this.models.embedding,
-        chunks.map((chunk) => chunk.content),
+        chunks.map((chunk) => chunkEmbeddingText(chunk, title || source.title)),
         { abortSignal: context.signal },
       );
 
       await this.assertExists(job);
       await this.replaceChunks(job, chunks, embeddings);
 
-      const title = extraction.title?.trim().slice(0, SOURCE_TITLE_MAX_LENGTH).trim();
       await this.updateSource(job, {
         status: 'ready',
         error: null,
