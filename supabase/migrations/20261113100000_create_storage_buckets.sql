@@ -25,9 +25,14 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
+-- Helpers for policies live in `private`, a schema PostgREST does not expose (no RPC endpoint).
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to authenticated, service_role;
+
 -- True if `object_name` is {auth.uid()}/{notebook}/{entity}/{filename} and the caller owns the
 -- notebook. Security invoker: the notebook lookup itself is subject to notebooks RLS.
-create function public.is_own_notebook_object_path(object_name text)
+create function private.is_own_notebook_object_path(object_name text)
 returns boolean
 language sql
 stable
@@ -44,8 +49,8 @@ as $$
     );
 $$;
 
-revoke all on function public.is_own_notebook_object_path(text) from public, anon;
-grant execute on function public.is_own_notebook_object_path(text) to authenticated, service_role;
+revoke all on function private.is_own_notebook_object_path(text) from public, anon;
+grant execute on function private.is_own_notebook_object_path(text) to authenticated, service_role;
 
 -- sources: upload into own notebooks; read and delete everything under the own user folder.
 create policy sources_objects_select_own on storage.objects
@@ -59,7 +64,7 @@ create policy sources_objects_insert_own on storage.objects
   for insert to authenticated
   with check (
     bucket_id = 'sources'
-    and public.is_own_notebook_object_path(name)
+    and private.is_own_notebook_object_path(name)
   );
 
 create policy sources_objects_delete_own on storage.objects
