@@ -38,11 +38,12 @@ export interface ChunkOptions {
   minSectionTokens?: number;
 }
 
+// Smaller chunks keep each embedding focused on one topic; the chat retrieves more of them.
 const DEFAULTS: Required<ChunkOptions> = {
-  targetTokens: 800,
-  maxTokens: 1000,
-  overlapTokens: 120,
-  minSectionTokens: 200,
+  targetTokens: 450,
+  maxTokens: 600,
+  overlapTokens: 70,
+  minSectionTokens: 120,
 };
 
 /** Upper bound for the context header of {@link chunkEmbeddingText}. */

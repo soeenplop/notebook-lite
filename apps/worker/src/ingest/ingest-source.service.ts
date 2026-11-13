@@ -26,8 +26,8 @@ import { UrlFetcher } from './url-fetcher.js';
 
 /** Rows per insert request (3072-dim vectors make rows large). */
 const CHUNK_INSERT_BATCH = 100;
-/** Upper bound per source (≈ 4M tokens); protects the embedding budget. */
-export const MAX_CHUNKS_PER_SOURCE = 5000;
+/** Upper bound per source (≈ 4M tokens at ~450 tokens/chunk); protects the embedding budget. */
+export const MAX_CHUNKS_PER_SOURCE = 9000;
 export const SNAPSHOT_FILE_NAME = 'snapshot.md';
 const RETRY_LIMIT = QUEUE_SETTINGS['ingest-source'].retryLimit ?? 0;
 export const GENERIC_FAILURE = 'Processing failed. Please delete the source and add it again.';
