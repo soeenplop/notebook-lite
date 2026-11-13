@@ -17,11 +17,12 @@ export const testEnv: ApiEnv = {
   CORS_ORIGIN: ['http://localhost:3000'],
   LOG_LEVEL: 'info',
   RATE_LIMIT_PER_MINUTE: 1000,
+  CHAT_MESSAGES_PER_MINUTE: 100,
   PODCAST_SUGGESTIONS_PER_HOUR: 20,
   PODCASTS_PER_DAY: 10,
   OPENAI_API_KEY: 'sk-test',
-  OPENAI_CHAT_MODEL: 'gpt-6.1-terra',
-  OPENAI_EMBEDDING_MODEL: 'text-embedding-3-large',
+  OPENAI_CHAT_MODEL: 'test-chat-model',
+  OPENAI_EMBEDDING_MODEL: 'test-embedding-model',
 };
 
 export interface TestKeys {

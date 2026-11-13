@@ -1,10 +1,13 @@
 import {
   type createNotebookInputSchema,
   type NotebookSummary,
+  notebookStoragePrefix,
   notebookSummarySchema,
+  STORAGE_BUCKETS,
   type updateNotebookInputSchema,
 } from '@notebook-lite/shared';
 import type { z } from 'zod';
+import { removeStorageFolder } from '../storage/storage-cleanup.js';
 import type { Db } from '../supabase/types.js';
 import { notFound, toTrpcError } from '../trpc/db-errors.js';
 
@@ -94,10 +97,25 @@ export async function updateNotebook(
 }
 
 /**
- * Deletes a notebook; sources, chats, messages and podcasts cascade in the database.
- * Storage objects and queued jobs are cleaned up once those features exist (M3).
+ * Deletes a notebook:
+ *  1. its Storage folders `sources/{uid}/{id}/` and `podcasts/{uid}/{id}/` (user client, RLS),
+ *  2. the row; sources, chunks, chats, messages and podcasts cascade in the database.
+ * Queued jobs are not cancelled: the worker re-checks that its notebook and entity still exist
+ * and aborts quietly otherwise.
  */
-export async function deleteNotebook(db: Db, id: string): Promise<{ id: string }> {
+export async function deleteNotebook(db: Db, userId: string, id: string): Promise<{ id: string }> {
+  const { data: existing, error: lookupError } = await db
+    .from('notebooks')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle();
+  if (lookupError) throw toTrpcError(lookupError);
+  if (!existing) throw notFound('Notebook');
+
+  const prefix = notebookStoragePrefix(userId, id);
+  await removeStorageFolder(db, STORAGE_BUCKETS.sources, prefix);
+  await removeStorageFolder(db, STORAGE_BUCKETS.podcasts, prefix);
+
   const { data, error } = await db
     .from('notebooks')
     .delete()

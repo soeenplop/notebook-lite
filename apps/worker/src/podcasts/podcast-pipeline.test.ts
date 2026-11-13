@@ -4,7 +4,7 @@ import { EMBEDDING_DIMENSIONS } from '@notebook-lite/ai';
 import { getLanguage } from '@notebook-lite/shared';
 import { MockEmbeddingModelV4, MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, it } from 'vitest';
-import { fakeServiceDb, type FakeState } from '../testing/fake-service-db.js';
+import { fakeServiceDb, type FakeState } from '../testing/fake-podcast-db.js';
 import type { AudioTools } from './audio.js';
 import {
   type DialogueRequest,

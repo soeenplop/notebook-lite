@@ -64,16 +64,17 @@ Set per application (*Environment* tab). Never put the Supabase secret key into 
 
 - **api**: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`,
   `CORS_ORIGIN=https://notebook-lite.soeenplop.dev`, `LOG_LEVEL=info`, `OPENAI_API_KEY`
-  (required since M5: podcast topic suggestions), optional `OPENAI_CHAT_MODEL`,
-  `OPENAI_EMBEDDING_MODEL`, `RATE_LIMIT_PER_MINUTE`, `PODCAST_SUGGESTIONS_PER_HOUR`,
-  `PODCASTS_PER_DAY`.
-- **worker**: `DATABASE_URL`, `LOG_LEVEL=info`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
-  `OPENAI_API_KEY` (all required since M5), optional `OPENAI_CHAT_MODEL`,
-  `OPENAI_EMBEDDING_MODEL`. Podcast audio: `ELEVENLABS_API_KEY`, optional
+  (required since M4: chat), optional `OPENAI_CHAT_MODEL` (default `gpt-6.1-terra`),
+  `OPENAI_EMBEDDING_MODEL` (default `text-embedding-3-large`), `RATE_LIMIT_PER_MINUTE` and
+  `CHAT_MESSAGES_PER_MINUTE` (per-user chat limit, default 10).
+- **api** also: `PODCAST_SUGGESTIONS_PER_HOUR` (default 20) and `PODCASTS_PER_DAY` (default 10).
+- **worker**: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`, optional
+  `OPENAI_CHAT_MODEL` / `OPENAI_EMBEDDING_MODEL`, `LOG_LEVEL=info`. It refuses to start without
+  them (source ingestion, M3). Podcast audio: `ELEVENLABS_API_KEY`, optional
   `ELEVENLABS_MODEL_ID` (default `eleven_v3`) and `ELEVENLABS_BASE_URL`; the voices are fixed
-  per language in `SUPPORTED_LANGUAGES`. The ElevenLabs values are optional at boot: without them the worker logs a warning and podcast jobs fail with
-  "Podcast audio is not configured yet". The worker image ships `ffmpeg`/`ffprobe` for joining
-  the audio batches.
+  per language in `SUPPORTED_LANGUAGES`. The ElevenLabs values are optional at boot: without
+  them the worker logs a warning and podcast jobs fail with "Podcast audio is not configured
+  yet". The worker image ships `ffmpeg`/`ffprobe` for joining the audio batches.
 
 `DATABASE_URL` (pg-boss) is the Supabase session-pooler connection string (port 5432; the
 direct connection is IPv6-only). Both apps fail at boot without it. pg-boss installs and

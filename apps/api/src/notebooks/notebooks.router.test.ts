@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { describe, expect, it } from 'vitest';
 import type { AuthUser } from '../auth/auth.types.js';
 import { fakeDb, type FakeResult } from '../testing/fake-db.js';
-import { testContext } from '../testing/fixtures.js';
+import { fakeJobs, testContext } from '../testing/fixtures.js';
 import { appRouter } from '../trpc/app-router.js';
 
 const user: AuthUser = { id: 'user-1', email: 'u@example.com', accessToken: 'token' };
@@ -105,10 +105,44 @@ describe('notebooks router', () => {
     expect(await trpcCode(remove.caller.notebooks.delete({ id: notebookId }))).toBe('NOT_FOUND');
   });
 
-  it('deletes a notebook', async () => {
-    const { caller, queries } = callerWith({ data: { id: notebookId }, error: null });
+  it('deletes the notebook’s Storage folders, then the notebook', async () => {
+    const fake = fakeDb(
+      { data: { id: notebookId }, error: null },
+      { data: { id: notebookId }, error: null },
+    );
+    const caller = appRouter.createCaller(
+      testContext({ user, supabase: fake.db, jobs: fakeJobs() }),
+    );
+    const prefix = `${user.id}/${notebookId}`;
+    fake.storage.put(
+      'sources',
+      `${prefix}/s1/a.pdf`,
+      `${prefix}/s2/snapshot.md`,
+      `${user.id}/other/s3/b.md`,
+    );
+    fake.storage.put('podcasts', `${prefix}/p1/episode.mp3`);
+
     await expect(caller.notebooks.delete({ id: notebookId })).resolves.toEqual({ id: notebookId });
-    expect(queries[0]?.ops[0]).toEqual(['delete', []]);
+
+    expect(fake.storage.removed).toEqual([
+      { bucket: 'sources', paths: [`${prefix}/s1/a.pdf`, `${prefix}/s2/snapshot.md`] },
+      { bucket: 'podcasts', paths: [`${prefix}/p1/episode.mp3`] },
+    ]);
+    expect([...(fake.storage.objects.get('sources') ?? [])]).toEqual([`${user.id}/other/s3/b.md`]);
+    expect(fake.events.at(-1)).toBe('db:notebooks');
+    expect(fake.queries[1]?.ops[0]).toEqual(['delete', []]);
+  });
+
+  it('keeps the notebook when Storage cleanup fails', async () => {
+    const fake = fakeDb({ data: { id: notebookId }, error: null });
+    fake.storage.failWith = new Error('storage down');
+    const caller = appRouter.createCaller(
+      testContext({ user, supabase: fake.db, jobs: fakeJobs() }),
+    );
+    await expect(caller.notebooks.delete({ id: notebookId })).rejects.toMatchObject({
+      code: 'INTERNAL_SERVER_ERROR',
+    });
+    expect(fake.queries).toHaveLength(1);
   });
 
   it('maps database errors without leaking details', async () => {
