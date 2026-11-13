@@ -6,6 +6,13 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Podcast TTS model: eleven_v4
+
+- **Scope:** Podcast TTS (`ELEVENLABS_MODEL_ID` in `apps/worker`, `.env.example`, Dokploy worker environment).
+- **Original decision:** `eleven_v3` (the text-to-dialogue endpoint's default) as the default model.
+- **Correction:** The default is `eleven_v4`, and production sets `ELEVENLABS_MODEL_ID=eleven_v4` explicitly on the worker. Request format, batching (≤ 2,000 characters) and voices are unchanged.
+- **Rationale:** Decision by the project owner. Local development already used `eleven_v4`; production was still on the `eleven_v3` default because the variable was not set in Dokploy.
+
 ## 2026-11-13 — Chat answers: Markdown via Streamdown
 
 - **Scope:** Chat answer rendering (`apps/web/src/components/chats/citation-text.tsx`).
