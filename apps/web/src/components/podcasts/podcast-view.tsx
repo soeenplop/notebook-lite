@@ -1,6 +1,6 @@
 'use client';
 
-import { isActivePodcastStatus, podcastIdSchema } from '@notebook-lite/shared';
+import { isActivePodcastStatus, podcastIdSchema, stripAudioTags } from '@notebook-lite/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DownloadIcon, Trash2Icon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -167,7 +167,7 @@ export function PodcastView({ notebookId, podcastId }: { notebookId: string; pod
                 <span className="text-xs font-medium text-muted-foreground">
                   {speakerLabel(segment.speaker, data.mode)}
                 </span>
-                <p className="leading-relaxed">{segment.text}</p>
+                <p className="leading-relaxed">{stripAudioTags(segment.text)}</p>
               </li>
             ))}
           </ol>

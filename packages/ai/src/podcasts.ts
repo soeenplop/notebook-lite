@@ -1,4 +1,5 @@
 import {
+  isPodcastAudioTag,
   type LanguageCode,
   PODCAST_TITLE_MAX_LENGTH,
   type PodcastScript,
@@ -8,6 +9,7 @@ import {
   podcastScriptSchema,
   podcastTopicSuggestionSchema,
   podcastWordTarget,
+  stripAudioTags,
 } from '@notebook-lite/shared';
 import { generateText, type LanguageModel, Output, streamText } from 'ai';
 import { z } from 'zod';
@@ -186,8 +188,9 @@ function finalizeScript(
 ): PodcastScript {
   const segments: PodcastSegment[] = [];
   for (const segment of draft.segments) {
-    const text = cleanSpokenText(segment.text);
-    if (!text) continue;
+    const text = cleanSpokenText(segment.text, { keepAudioTags: true });
+    // A turn that is only an audio tag has nothing to say.
+    if (!stripAudioTags(text)) continue;
     const speaker = brief.mode === 'monologue' ? 'A' : segment.speaker;
     const last = segments.at(-1);
     // Adjacent turns of the same speaker read better as one segment.
@@ -202,11 +205,20 @@ function finalizeScript(
 
 /**
  * Removes what a TTS engine should not read: citation markers, markdown emphasis and
- * headings, code ticks, and speaker labels the model may have put into the text.
+ * headings, code ticks, and speaker labels the model may have put into the text. Bracketed
+ * text is removed too, except (with `keepAudioTags`) the first allowed audio tag, which
+ * ElevenLabs reads as a delivery cue. Titles and topics never keep tags.
  */
-export function cleanSpokenText(text: string): string {
+export function cleanSpokenText(text: string, options: { keepAudioTags?: boolean } = {}): string {
+  let tags = 0;
   return text
     .replaceAll(/\[\d+(?:\s*[,–-]\s*\d+)*\]/g, '')
+    .replaceAll(/\[([^\]\n]{0,40})\]/g, (_match, inner: string) => {
+      const tag = inner.trim().toLowerCase();
+      if (!options.keepAudioTags || !isPodcastAudioTag(tag) || tags > 0) return ' ';
+      tags++;
+      return ` [${tag}] `;
+    })
     .replaceAll(/^\s*#{1,6}\s+/gm, '')
     .replaceAll(/^\s*(?:[-*•]|\d+\.)\s+/gm, '')
     .replaceAll(/\*\*|__|`/g, '')
@@ -220,7 +232,7 @@ export function cleanSpokenText(text: string): string {
 /** Number of words in a script (for logging and checks against the target). */
 export function countScriptWords(script: Pick<PodcastScript, 'segments'>): number {
   return script.segments.reduce(
-    (sum, segment) => sum + segment.text.split(/\s+/).filter(Boolean).length,
+    (sum, segment) => sum + stripAudioTags(segment.text).split(/\s+/).filter(Boolean).length,
     0,
   );
 }
