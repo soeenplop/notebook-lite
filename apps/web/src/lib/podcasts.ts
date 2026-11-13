@@ -1,12 +1,4 @@
-import {
-  isActivePodcastStatus,
-  type PodcastLength,
-  type PodcastMode,
-  type PodcastStatus,
-} from '@notebook-lite/shared';
-
-/** How often the podcast list and detail poll while a podcast is in production. */
-export const PODCAST_POLL_MS = 4000;
+import type { PodcastLength, PodcastMode, PodcastStatus } from '@notebook-lite/shared';
 
 export const PODCAST_STATUS_LABELS: Record<PodcastStatus, string> = {
   queued: 'Queued',
@@ -26,11 +18,6 @@ export const PODCAST_LENGTH_OPTIONS: { value: PodcastLength; label: string }[] =
   { value: 6, label: '~6 min' },
   { value: 15, label: '~15 min' },
 ];
-
-/** Poll interval for a list or detail query: only while something is in production. */
-export function pollInterval(statuses: readonly PodcastStatus[] | undefined): number | false {
-  return statuses?.some(isActivePodcastStatus) ? PODCAST_POLL_MS : false;
-}
 
 /** "0:42", "6:05", "1:02:03". */
 export function formatDuration(seconds: number): string {
