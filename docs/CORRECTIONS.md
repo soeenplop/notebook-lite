@@ -6,6 +6,20 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Podcast scripts: personalities, hook, audio tags
+
+- **Scope:** Podcast script prompts and cleanup (`packages/ai/src/podcast-prompts.ts`, `podcasts.ts`), transcript (`apps/web`).
+- **Original decision:** Plain, neutral scripts: host A asks, host B explains; open with a short hook, close with a wrap-up; no stage directions of any kind in the text.
+- **Correction:** The hosts get distinct personalities (A curious and skeptical, speaking for the listener; B the enthusiastic expert) and real conversation mechanics (follow-ups, reactions, friendly disagreement). The hook comes from the excerpts (surprising fact, contradiction or question), the ending gives concrete takeaways, long episodes follow an arc, and contradictions between sources are highlighted. Sparse fillers per language are allowed. Scripts may contain one audio tag per turn from `PODCAST_AUDIO_TAGS` (`packages/shared`); all other bracketed text is removed, titles never keep tags, and the transcript hides them.
+- **Rationale:** Decision by the project owner: the episodes were correct but flat. Eleven v4 (like v3) reads bracketed audio tags as delivery cues; a fixed list keeps the output predictable. Grounding is unchanged: analogies may explain, but must not add facts.
+
+## 2026-11-13 — Podcast TTS model: eleven_v4
+
+- **Scope:** Podcast TTS (`ELEVENLABS_MODEL_ID` in `apps/worker`, `.env.example`, Dokploy worker environment).
+- **Original decision:** `eleven_v3` (the text-to-dialogue endpoint's default) as the default model.
+- **Correction:** The default is `eleven_v4`, and production sets `ELEVENLABS_MODEL_ID=eleven_v4` explicitly on the worker. Request format, batching (≤ 2,000 characters) and voices are unchanged.
+- **Rationale:** Decision by the project owner. Local development already used `eleven_v4`; production was still on the `eleven_v3` default because the variable was not set in Dokploy.
+
 ## 2026-11-13 — Chat answers: Markdown via Streamdown
 
 - **Scope:** Chat answer rendering (`apps/web/src/components/chats/citation-text.tsx`).
