@@ -25,6 +25,13 @@ Format: **Scope** (what part of the system / which document) · **Original decis
   - The locale was a no-op: V8's ICU sentence segmenter splits identically for `de`, `en` and no locale, and it has no abbreviation handling. The actual defect was the abbreviation splits.
   - Docling or a hosted parser would give better layout and tables (and OCR), but that is a separate architectural decision.
 
+## 2026-11-13 — Job queues: heartbeats, settings applied on every start
+
+- **Scope:** Job queue (`packages/queue` `QUEUE_SETTINGS`, `JobQueue.start`), both queues.
+- **Original decision:** Abandoned jobs are bounded only by `expireInSeconds` (15 min for `ingest-source`, 60 min for `generate-podcast`). `QUEUE_SETTINGS` were applied only when a queue was created.
+- **Correction:** Every queue sets `heartbeatSeconds: 30`. pg-boss refreshes the heartbeat while the handler runs, and the worker's supervisor retries jobs whose heartbeat went stale. `JobQueue.start` now also applies `QUEUE_SETTINGS` to existing queues (`updateQueue`), so policy changes reach production.
+- **Rationale:** A deploy replaced the worker while it was rendering a 2-minute podcast. The job stayed `active` with no worker, and the podcast showed "Recording audio" until the 60-minute expiry. With heartbeats an abandoned job is retried within about two minutes. The pipeline resumes from the saved script and cached batches, so the retry costs little.
+
 ## 2026-11-13 — Podcast topic suggestions: smaller sample, low reasoning effort, streamed
 
 - **Scope:** Podcast topic suggestions (`podcasts.suggestTopics`, `packages/ai` `streamPodcastTopics`, the wizard's topic step).
