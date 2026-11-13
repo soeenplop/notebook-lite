@@ -6,6 +6,13 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Podcast speakers: 10 % faster
+
+- **Scope:** Podcast audio (`apps/worker` ffmpeg step) and script length (`podcastWordTarget` in `packages/shared`).
+- **Original decision:** The episode plays at the voices' natural ElevenLabs pace; the word target is the language's speaking rate (de 130, en 150 wpm) times the length in minutes.
+- **Correction:** The worker speeds up the joined episode by `PODCAST_SPEECH_TEMPO` (1.1) with ffmpeg `atempo`, which keeps the pitch. The word target scales by the same factor, so episodes keep their ~2/6/15-minute length.
+- **Rationale:** Request from the project owner: the speakers sounded too slow. The text-to-dialogue endpoint has no speed setting (`settings` only offers `stability`, `similarity`, `clone_strength`), so the tempo is changed after synthesis. The cached batch MP3s stay at natural pace, so resumed jobs are sped up exactly once.
+
 ## 2026-11-13 — Chunking: structured PDFs, embedding context, smaller chunks
 
 - **Scope:** Ingestion (`apps/worker` PDF extractor, `packages/ai` chunker and embedding input) and chat retrieval (`RETRIEVAL_MATCH_COUNT`).

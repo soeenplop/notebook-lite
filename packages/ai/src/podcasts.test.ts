@@ -153,7 +153,7 @@ describe('generatePodcastScript', () => {
 
     expect(model.doGenerateCalls).toHaveLength(1);
     const prompt = promptText(model.doGenerateCalls[0]);
-    expect(prompt).toContain('about 900 words');
+    expect(prompt).toContain('about 990 words');
     expect(prompt).toContain('English (English)');
     expect(prompt).toContain('Energy transition');
     expect(script).toEqual({
@@ -182,7 +182,7 @@ describe('generatePodcastScript', () => {
     });
     expect(script.segments).toEqual([{ speaker: 'A', text: 'One. Two.' }]);
     const prompt = promptText(model.doGenerateCalls[0]);
-    expect(prompt).toContain('about 260 words');
+    expect(prompt).toContain('about 286 words');
     expect(prompt).toContain('German (Deutsch)');
     expect(prompt).toContain('single host');
   });
@@ -210,10 +210,10 @@ describe('generatePodcastScript', () => {
     });
 
     expect(model.doGenerateCalls).toHaveLength(1 + OUTLINE_SECTION_COUNT);
-    expect(promptText(model.doGenerateCalls[0])).toContain('about 2250 words');
+    expect(promptText(model.doGenerateCalls[0])).toContain('about 2475 words');
     const second = promptText(model.doGenerateCalls[1]);
     expect(second).toContain('Write section 1');
-    expect(second).toContain('about 450 words');
+    expect(second).toContain('about 495 words');
     expect(second).toContain('the episode starts here');
     const third = promptText(model.doGenerateCalls[2]);
     expect(third).toContain('B: Answer 1.');

@@ -1,10 +1,14 @@
 import { spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { PODCAST_SPEECH_TEMPO } from '@notebook-lite/shared';
 
 /** Audio operations of the podcast pipeline (ffmpeg in production, fakes in tests). */
 export interface AudioTools {
-  /** Concatenates MP3 files in order into `output`, re-encoded to a uniform 128 kbps. */
+  /**
+   * Concatenates MP3 files in order into `output`, sped up to the podcast tempo and re-encoded
+   * to a uniform 128 kbps.
+   */
   concatMp3(inputs: readonly string[], output: string, signal?: AbortSignal): Promise<void>;
   /** Duration of an audio file in seconds. */
   durationSeconds(file: string, signal?: AbortSignal): Promise<number>;
@@ -45,7 +49,11 @@ export function concatListEntry(file: string): string {
 }
 
 export class FfmpegAudio implements AudioTools {
-  constructor(private readonly run: RunCommand = runCommand) {}
+  constructor(
+    private readonly run: RunCommand = runCommand,
+    /** Playback tempo; ffmpeg's `atempo` accepts 0.5–100 and keeps the pitch. */
+    private readonly tempo: number = PODCAST_SPEECH_TEMPO,
+  ) {}
 
   async concatMp3(inputs: readonly string[], output: string, signal?: AbortSignal): Promise<void> {
     if (inputs.length === 0) throw new Error('nothing to concatenate');
@@ -60,7 +68,7 @@ export class FfmpegAudio implements AudioTools {
       [
         '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
         '-f', 'concat', '-safe', '0', '-i', list,
-        '-vn', '-c:a', 'libmp3lame', '-b:a', '128k', '-ar', '44100',
+        '-vn', '-af', `atempo=${this.tempo}`, '-c:a', 'libmp3lame', '-b:a', '128k', '-ar', '44100',
         output,
       ],
       signal,
