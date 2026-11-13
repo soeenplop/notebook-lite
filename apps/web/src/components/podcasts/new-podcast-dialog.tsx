@@ -2,14 +2,16 @@
 
 import {
   PODCAST_TOPIC_MAX_LENGTH,
+  PODCAST_TOPIC_SUGGESTION_COUNT,
   type PodcastLength,
   type PodcastMode,
   type PodcastTopicSuggestion,
+  type SuggestPodcastTopicsInput,
 } from '@notebook-lite/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SparklesIcon } from 'lucide-react';
 import Link from 'next/link';
-import { type ReactNode, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +32,7 @@ import {
   WIZARD_STEPS,
   type WizardStep,
 } from '@/lib/podcasts';
-import { useTRPC } from '@/lib/trpc/react';
+import { useTRPC, useTRPCClient } from '@/lib/trpc/react';
 
 interface NewPodcastDialogProps {
   notebookId: string;
@@ -299,6 +301,47 @@ function Choice({
   );
 }
 
+/**
+ * Topic suggestions streamed from the API: each topic shows up as soon as the model has
+ * finished it. A new request (or unmounting) aborts the previous one, which also stops the
+ * LLM call on the server.
+ */
+function useTopicSuggestions() {
+  const client = useTRPCClient();
+  const [topics, setTopics] = useState<PodcastTopicSuggestion[]>([]);
+  const [isPending, setIsPending] = useState(false);
+  const current = useRef<AbortController | null>(null);
+
+  useEffect(() => () => current.current?.abort(), []);
+
+  const suggest = async (input: SuggestPodcastTopicsInput) => {
+    current.current?.abort();
+    const controller = new AbortController();
+    current.current = controller;
+    setTopics([]);
+    setIsPending(true);
+    try {
+      const stream = await client.podcasts.suggestTopics.mutate(input, {
+        signal: controller.signal,
+      });
+      for await (const topic of stream) {
+        if (controller.signal.aborted) return;
+        setTopics((previous) => [...previous, topic]);
+      }
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      toast.error(error instanceof Error ? error.message : 'Could not suggest topics.');
+    } finally {
+      if (current.current === controller) {
+        current.current = null;
+        setIsPending(false);
+      }
+    }
+  };
+
+  return { topics, isPending, suggest };
+}
+
 function TopicStep({
   notebookId,
   sourceIds,
@@ -310,13 +353,8 @@ function TopicStep({
   topic: string;
   onTopicChange: (topic: string) => void;
 }) {
-  const trpc = useTRPC();
   const topicId = useId();
-  const suggest = useMutation(
-    trpc.podcasts.suggestTopics.mutationOptions({
-      onError: (error) => toast.error(error.message),
-    }),
-  );
+  const suggestions = useTopicSuggestions();
   const choose = (suggestion: PodcastTopicSuggestion) =>
     onTopicChange(`${suggestion.title}: ${suggestion.angle}`.slice(0, PODCAST_TOPIC_MAX_LENGTH));
 
@@ -343,23 +381,20 @@ function TopicStep({
             type="button"
             variant="outline"
             size="sm"
-            disabled={suggest.isPending}
-            onClick={() => suggest.mutate({ notebookId, sourceIds })}
+            disabled={suggestions.isPending}
+            onClick={() => void suggestions.suggest({ notebookId, sourceIds })}
           >
             <SparklesIcon aria-hidden />
-            {suggest.isPending ? 'Suggesting…' : suggest.data ? 'Suggest again' : 'Suggest topics'}
+            {suggestions.isPending
+              ? 'Suggesting…'
+              : suggestions.topics.length > 0
+                ? 'Suggest again'
+                : 'Suggest topics'}
           </Button>
         </div>
-        {suggest.isPending && (
-          <div className="grid gap-2" aria-busy="true">
-            <Skeleton className="h-14 w-full" />
-            <Skeleton className="h-14 w-full" />
-            <Skeleton className="h-14 w-full" />
-          </div>
-        )}
-        {suggest.data && !suggest.isPending && (
-          <ul className="grid gap-2">
-            {suggest.data.topics.map((suggestion) => (
+        {(suggestions.isPending || suggestions.topics.length > 0) && (
+          <ul className="grid gap-2" aria-busy={suggestions.isPending}>
+            {suggestions.topics.map((suggestion) => (
               <li key={suggestion.title}>
                 <button
                   type="button"
@@ -371,6 +406,15 @@ function TopicStep({
                 </button>
               </li>
             ))}
+            {suggestions.isPending &&
+              Array.from(
+                { length: Math.max(0, PODCAST_TOPIC_SUGGESTION_COUNT - suggestions.topics.length) },
+                (_, index) => (
+                  <li key={`pending-${index}`}>
+                    <Skeleton className="h-14 w-full" />
+                  </li>
+                ),
+              )}
           </ul>
         )}
       </div>
