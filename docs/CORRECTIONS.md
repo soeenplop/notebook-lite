@@ -13,6 +13,13 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 - **Correction:** Status changes are pushed over **SSE** through a tRPC subscription (`httpSubscriptionLink`). A trigger on `public.podcasts` sends `pg_notify('podcast_changes', …)` when the status or title changes. The API holds one `LISTEN` connection per process and fans out notifications by `user_id`. Events carry only ids and the status, and the web refetches `list`/`get` through RLS when one arrives. It also refetches on every (re)connect, and when the server's listener reconnects it sends a `resync` event. The browser sends the access token as an `Authorization` header through the `eventsource` package, not in the URL.
 - **Rationale:** The project owner asked for live updates without polling. Postgres NOTIFY needs no new infrastructure: it comes from the database's own commit, so the worker stays unchanged, and it works on the direct connection the API already uses for pg-boss. Supabase Realtime would have needed a publication, RLS-aware realtime auth in the API and a second client library.
 
+## 2026-11-13 — Podcast scripts: podcast-style opening and closing
+
+- **Scope:** Podcast script prompts (`packages/ai/src/podcast-prompts.ts`).
+- **Original decision:** Open directly with a hook from the excerpts and explicitly no greeting; close with takeaways or an open question.
+- **Correction:** Episodes open in three beats: a cold open (hook from the excerpts), a short welcome (in dialogue mode the hosts also greet each other) and a preview of the episode. They close in two beats: takeaways or an open question, ideally calling back to the hook, then a short farewell (hosts thank each other and the listener). The opening takes about 10 percent of the episode. The model must not invent a show name or host names, ask listeners to subscribe or rate, or announce future episodes. Outlined episodes put the opening only in the first section and the farewell only in the last.
+- **Rationale:** Feedback from the project owner: start and end felt abrupt. A welcome and a farewell make episodes sound like a real podcast. Hosts and show stay nameless because voices are fixed per language and nothing in the product defines names.
+
 ## 2026-11-13 — Podcast speakers: 10 % faster
 
 - **Scope:** Podcast audio (`apps/worker` ffmpeg step) and script length (`podcastWordTarget` in `packages/shared`).

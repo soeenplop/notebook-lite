@@ -215,9 +215,15 @@ describe('generatePodcastScript', () => {
     expect(second).toContain('Write section 1');
     expect(second).toContain('about 495 words');
     expect(second).toContain('the episode starts here');
+    expect(second).toContain('Cold open');
+    expect(second).not.toContain('Farewell');
     const third = promptText(model.doGenerateCalls[2]);
     expect(third).toContain('B: Answer 1.');
-    expect(promptText(model.doGenerateCalls.at(-1))).toContain('This is the last section');
+    expect(third).not.toContain('Cold open');
+    const last = promptText(model.doGenerateCalls.at(-1));
+    expect(last).toContain('This is the last section');
+    expect(last).toContain('Farewell');
+    expect(last).not.toContain('Cold open');
 
     expect(script.title).toBe('Long episode');
     expect(script.segments).toHaveLength(2 * OUTLINE_SECTION_COUNT);
@@ -262,7 +268,7 @@ describe('generatePodcastScript', () => {
     expect(countScriptWords(script)).toBe(4);
   });
 
-  it('asks for a hook, distinct hosts, audio tags and takeaways in the notebook language', async () => {
+  it('asks for a podcast-like opening and closing, distinct hosts and audio tags', async () => {
     const model = mockModel({ title: 'T', segments: [{ speaker: 'A', text: 'Hi.' }] });
     await generatePodcastScript(model, {
       language: 'de',
@@ -272,11 +278,31 @@ describe('generatePodcastScript', () => {
       excerpts,
     });
     const prompt = promptText(model.doGenerateCalls[0]);
-    expect(prompt).toContain('Open with a hook');
-    expect(prompt).toContain('takeaways');
+    expect(prompt).toContain('Cold open');
+    expect(prompt).toContain('greet each other');
+    expect(prompt).toContain('Takeaways');
+    expect(prompt).toContain('say goodbye together');
+    expect(prompt).toContain('Do not invent a show name or host');
     expect(prompt).toContain('Host A is curious');
     expect(prompt).toContain('[laughs]');
     expect(prompt).toContain('ähm');
+  });
+});
+
+describe('generatePodcastScript (monologue)', () => {
+  it('lets the single host welcome and say goodbye to the listener', async () => {
+    const model = mockModel({ title: 'T', segments: [{ speaker: 'A', text: 'Hi.' }] });
+    await generatePodcastScript(model, {
+      language: 'en',
+      mode: 'monologue',
+      targetMinutes: 2,
+      topic: 'Solar',
+      excerpts,
+    });
+    const prompt = promptText(model.doGenerateCalls[0]);
+    expect(prompt).toContain('the host warmly welcomes the listener');
+    expect(prompt).toContain('the host thanks the listener for listening');
+    expect(prompt).not.toContain('greet each other');
   });
 });
 
