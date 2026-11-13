@@ -70,7 +70,7 @@ export function NotebookShell({ notebookId }: { notebookId: string }) {
 
       <SourcesPanel notebookId={data.id} />
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <ChatsPanel notebookId={data.id} />
         <Section
           icon={MicIcon}
@@ -88,7 +88,7 @@ export function NotebookShell({ notebookId }: { notebookId: string }) {
 
 function Frame({ children }: { children: ReactNode }) {
   return (
-    <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
+    <main className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 py-8">
       <Link
         href="/"
         className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
