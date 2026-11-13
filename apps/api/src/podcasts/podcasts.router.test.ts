@@ -339,8 +339,8 @@ describe('podcasts.suggestTopics', () => {
       caller.podcasts.suggestTopics({ notebookId, sourceIds: [sourceA, sourceB] }),
     ).resolves.toEqual({ topics });
 
-    // source B has 10 chunks: 8 sampled, the first two plus an even spread
-    expect(queries[5]?.ops).toContainEqual(['in', ['ordinal', sampleOrdinals(10, 8)]]);
+    // source B has 10 chunks: 4 sampled, the first two plus an even spread
+    expect(queries[5]?.ops).toContainEqual(['in', ['ordinal', sampleOrdinals(10, 4)]]);
     const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt);
     expect(prompt).toContain('German (Deutsch)');
     expect(prompt).toContain('Solar verdoppelt.');
