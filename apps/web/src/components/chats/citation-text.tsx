@@ -1,43 +1,109 @@
 'use client';
 
-import { type Citation, splitCitations } from '@notebook-lite/shared';
+import type { Citation } from '@notebook-lite/shared';
+import { type ComponentProps, createContext, use, useMemo } from 'react';
+import {
+  type Components,
+  defaultRehypePlugins,
+  Streamdown,
+  type StreamdownProps,
+} from 'streamdown';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import {
+  CITATION_ATTRIBUTE,
+  parseCitationAttribute,
+  rehypeCitations,
+} from '@/lib/rehype-citations';
 
 /**
- * Answer text with its `[n]` markers rendered as citation chips. Markers without a citation
- * (invalid, or still streaming) are dropped; hovering a chip shows the quote, clicking it opens
- * the source viewer.
+ * Elements the answer may not render: images could load arbitrary URLs (data exfiltration). Links
+ * go through Streamdown's confirmation dialog.
+ */
+const DISALLOWED_ELEMENTS = ['img'];
+
+/**
+ * Streamdown's rehype plugins without `raw`, so raw HTML in an answer is not rendered. The
+ * sanitizer and the link/image hardening still run.
+ */
+const { raw: _raw, ...SAFE_REHYPE_PLUGINS } = defaultRehypePlugins;
+
+/** The answer's citations, read by the citation spans (keeps the markdown components stable). */
+const CitationContext = createContext<{
+  citations: ReadonlyMap<number, Citation>;
+  onSelect: (citation: Citation) => void;
+}>({ citations: new Map(), onSelect: () => {} });
+
+/** Renders a citation span from {@link rehypeCitations} as chips; other spans stay spans. */
+function MarkdownSpan({ node: _node, ...props }: ComponentProps<'span'> & { node?: unknown }) {
+  const { citations, onSelect } = use(CitationContext);
+  const markers = parseCitationAttribute((props as Record<string, unknown>)[CITATION_ATTRIBUTE]);
+  if (markers.length === 0) return <span {...props} />;
+  return (
+    <span className="whitespace-nowrap">
+      {markers.map((marker) => {
+        const citation = citations.get(marker);
+        return citation ? (
+          <CitationChip key={marker} citation={citation} onSelect={onSelect} />
+        ) : null;
+      })}
+    </span>
+  );
+}
+
+/** Overrides of Streamdown's components: citation chips, and headings sized for a chat answer. */
+const MARKDOWN_COMPONENTS: Components = {
+  span: MarkdownSpan,
+  h1: ({ children }) => (
+    <h3 className="mt-4 mb-2 text-base font-semibold first:mt-0">{children}</h3>
+  ),
+  h2: ({ children }) => (
+    <h3 className="mt-4 mb-2 text-base font-semibold first:mt-0">{children}</h3>
+  ),
+  h3: ({ children }) => <h4 className="mt-3 mb-1.5 font-semibold first:mt-0">{children}</h4>,
+  h4: ({ children }) => <h5 className="mt-3 mb-1.5 font-semibold first:mt-0">{children}</h5>,
+  h5: ({ children }) => <h6 className="mt-3 mb-1.5 font-semibold first:mt-0">{children}</h6>,
+  h6: ({ children }) => <h6 className="mt-3 mb-1.5 font-semibold first:mt-0">{children}</h6>,
+};
+
+/**
+ * Answer text rendered as Markdown with Streamdown (memoized per block while streaming, see the AI
+ * SDK "Markdown Chatbot with Memoization" recipe), with its `[n]` markers as citation chips.
+ * Markers without a citation (invalid, or still streaming) are dropped; hovering a chip shows the
+ * quote, clicking it opens the source viewer.
  */
 export function CitationText({
   text,
   citations,
   onSelect,
+  isAnimating = false,
 }: {
   text: string;
   citations: ReadonlyMap<number, Citation>;
   onSelect: (citation: Citation) => void;
+  /** True while the answer is still streaming in. */
+  isAnimating?: boolean;
 }) {
-  const valid = new Set(citations.keys());
-  const segments = splitCitations(text, valid);
+  const markerKey = [...citations.keys()].join(',');
+  const rehypePlugins = useMemo<StreamdownProps['rehypePlugins']>(
+    () => [
+      ...Object.values(SAFE_REHYPE_PLUGINS),
+      [rehypeCitations, new Set(markerKey ? markerKey.split(',').map(Number) : [])],
+    ],
+    [markerKey],
+  );
+  const context = useMemo(() => ({ citations, onSelect }), [citations, onSelect]);
   return (
-    <div className="text-sm leading-relaxed whitespace-pre-wrap">
-      {segments.map((segment, index) =>
-        segment.type === 'text' ? (
-          // oxlint-disable-next-line react/no-array-index-key -- segments have no stable id
-          <span key={index}>{segment.text}</span>
-        ) : (
-          // oxlint-disable-next-line react/no-array-index-key -- segments have no stable id
-          <span key={index} className="whitespace-nowrap">
-            {segment.markers.map((marker) => {
-              const citation = citations.get(marker);
-              return citation ? (
-                <CitationChip key={marker} citation={citation} onSelect={onSelect} />
-              ) : null;
-            })}
-          </span>
-        ),
-      )}
-    </div>
+    <CitationContext value={context}>
+      <Streamdown
+        className="text-sm leading-relaxed break-words"
+        rehypePlugins={rehypePlugins}
+        components={MARKDOWN_COMPONENTS}
+        disallowedElements={DISALLOWED_ELEMENTS}
+        isAnimating={isAnimating}
+      >
+        {text}
+      </Streamdown>
+    </CitationContext>
   );
 }
 

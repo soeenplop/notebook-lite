@@ -6,6 +6,13 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Chat answers: Markdown via Streamdown
+
+- **Scope:** Chat answer rendering (`apps/web/src/components/chats/citation-text.tsx`).
+- **Original decision:** Render answers with `react-markdown` + `remark-gfm` and a remark plugin that turns `[n]` markers into citation chips; the whole answer is re-parsed on every streamed chunk.
+- **Correction:** Follow the AI SDK cookbook recipe "Markdown Chatbot with Memoization" and render answers with **Streamdown**, which splits the Markdown into blocks and memoizes them while streaming. Citation chips come from a rehype plugin that runs after Streamdown's sanitizer. Streamdown's `raw` rehype plugin is left out (no raw HTML), images are disallowed, and links open through Streamdown's confirmation dialog.
+- **Rationale:** Decision by the project owner. Block memoization keeps long streamed answers cheap to re-render, and Streamdown also handles incomplete Markdown during streaming (unclosed emphasis, lists, code fences).
+
 ## 2026-11-13 — Podcast voices: back to the voice-library voices
 
 - **Scope:** Podcast TTS voices (`SUPPORTED_LANGUAGES` in `packages/shared`).
