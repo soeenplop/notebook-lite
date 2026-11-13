@@ -6,6 +6,25 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Chunking: structured PDFs, embedding context, smaller chunks
+
+- **Scope:** Ingestion (`apps/worker` PDF extractor, `packages/ai` chunker and embedding input) and chat retrieval (`RETRIEVAL_MATCH_COUNT`).
+- **Original decision:**
+  - PDFs were extracted as flat text via `unpdf` `extractText`.
+  - Chunks were ~800 tokens (max 1000, overlap 120). Only the chunk content was embedded.
+  - The chat retrieved 12 candidates.
+  - When this was planned, the sentence splitter was also supposed to get the notebook language.
+- **Correction:**
+  - PDF structure (headings by font size, paragraphs, lists, de-hyphenation, running headers/footers dropped) is rebuilt from pdf.js text positions (`pdf-layout.ts`).
+  - The embedding input carries a header with the source title and heading path.
+  - Chunks are ~450 tokens (max 600, overlap 70), and a tiny final chunk merges into the previous one. The chat retrieves 20 candidates, and the per-source cap grows to 9000 chunks.
+  - **Not** passing the notebook language to `Intl.Segmenter`: sentences cut at abbreviations ("Dr.", "z. B.", "e.g.") are joined again instead.
+- **Rationale:**
+  - Flat PDF text gave one block per page, no heading paths, and hyphenated words that hurt embeddings and FTS.
+  - Smaller chunks with a context header keep each vector on one topic.
+  - The locale was a no-op: V8's ICU sentence segmenter splits identically for `de`, `en` and no locale, and it has no abbreviation handling. The actual defect was the abbreviation splits.
+  - Docling or a hosted parser would give better layout and tables (and OCR), but that is a separate architectural decision.
+
 ## 2026-11-13 — Podcast topic suggestions: smaller sample, low reasoning effort, streamed
 
 - **Scope:** Podcast topic suggestions (`podcasts.suggestTopics`, `packages/ai` `streamPodcastTopics`, the wizard's topic step).
