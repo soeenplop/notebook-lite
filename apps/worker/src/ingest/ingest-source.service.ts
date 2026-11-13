@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   type AiModels,
   chunkDocument,
+  chunkEmbeddingText,
   embedTexts,
   type TextChunk,
   toVectorLiteral,
@@ -25,8 +26,8 @@ import { UrlFetcher } from './url-fetcher.js';
 
 /** Rows per insert request (3072-dim vectors make rows large). */
 const CHUNK_INSERT_BATCH = 100;
-/** Upper bound per source (≈ 4M tokens); protects the embedding budget. */
-export const MAX_CHUNKS_PER_SOURCE = 5000;
+/** Upper bound per source (≈ 4M tokens at ~450 tokens/chunk); protects the embedding budget. */
+export const MAX_CHUNKS_PER_SOURCE = 9000;
 export const SNAPSHOT_FILE_NAME = 'snapshot.md';
 const RETRY_LIMIT = QUEUE_SETTINGS['ingest-source'].retryLimit ?? 0;
 export const GENERIC_FAILURE = 'Processing failed. Please delete the source and add it again.';
@@ -87,17 +88,18 @@ export class IngestSourceService {
         throw new IngestError('The source is too long to process.');
       }
 
+      const title = extraction.title?.trim().slice(0, SOURCE_TITLE_MAX_LENGTH).trim();
+
       await this.assertExists(job);
       const { embeddings } = await embedTexts(
         this.models.embedding,
-        chunks.map((chunk) => chunk.content),
+        chunks.map((chunk) => chunkEmbeddingText(chunk, title || source.title)),
         { abortSignal: context.signal },
       );
 
       await this.assertExists(job);
       await this.replaceChunks(job, chunks, embeddings);
 
-      const title = extraction.title?.trim().slice(0, SOURCE_TITLE_MAX_LENGTH).trim();
       await this.updateSource(job, {
         status: 'ready',
         error: null,
