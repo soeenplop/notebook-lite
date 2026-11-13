@@ -86,7 +86,7 @@ export async function* streamPodcastTopics(
 
 /** Lengths at or above this many minutes are written section by section from an outline. */
 export const OUTLINE_MIN_MINUTES = 15;
-/** Sections of an outlined script (about 375–450 words each for 15 minutes). */
+/** Sections of an outlined script (about 430–495 words each for 15 minutes). */
 export const OUTLINE_SECTION_COUNT = 5;
 /** Segments of the previous section shown to the model for continuity. */
 const CONTEXT_SEGMENTS = 4;

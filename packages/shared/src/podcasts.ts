@@ -92,11 +92,19 @@ export function stripAudioTags(text: string): string {
 }
 
 /**
- * Target word count of a script: the language's speaking rate times the length in minutes
- * (e.g. English 150 wpm × 6 min = 900 words).
+ * Playback tempo applied to the finished episode (ffmpeg `atempo`, pitch-preserving). The
+ * ElevenLabs text-to-dialogue endpoint has no speed setting, so the worker speeds the audio up
+ * when it joins the batches. 1.1 = 10 % faster than the voices' natural pace.
+ */
+export const PODCAST_SPEECH_TEMPO = 1.1;
+
+/**
+ * Target word count of a script: the language's speaking rate, sped up by
+ * {@link PODCAST_SPEECH_TEMPO}, times the length in minutes
+ * (e.g. English 150 wpm × 1.1 × 6 min = 990 words).
  */
 export function podcastWordTarget(language: LanguageCode, minutes: PodcastLength): number {
-  return getLanguage(language).wordsPerMinute * minutes;
+  return Math.round(getLanguage(language).wordsPerMinute * PODCAST_SPEECH_TEMPO * minutes);
 }
 
 // --- topic suggestions --------------------------------------------------------
