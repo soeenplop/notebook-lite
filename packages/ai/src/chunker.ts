@@ -34,7 +34,10 @@ export interface ChunkOptions {
   maxTokens?: number;
   /** Trailing context repeated at the start of the next chunk (not across headings). */
   overlapTokens?: number;
-  /** A heading starts a new chunk once the current one has at least this many tokens. */
+  /**
+   * A heading starts a new chunk once the current one has at least this many tokens. A final
+   * chunk smaller than this is merged into the previous one of the same section if it fits.
+   */
   minSectionTokens?: number;
 }
 
@@ -88,6 +91,13 @@ interface Piece {
 const HEADING = /^(#{1,6})[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/;
 const FENCE = /^\s*(```|~~~)/;
 const BLANK = /^\s*$/;
+/**
+ * A "sentence" ending like this was cut at an abbreviation (single letters as in "z. B." or
+ * "J. Smith", dotted forms like "e.g.", common German/English titles and short forms).
+ * `Intl.Segmenter` has no abbreviation handling, whatever the locale.
+ */
+const ABBREVIATION =
+  /(?:^|[\s(])(?:\p{L}|\p{L}+(?:\.\p{L}+)+|dr|prof|mr|mrs|ms|st|nr|no|vgl|bzw|ca|inkl|ggf|evtl|bspw|fig|abb|vs)\.$/iu;
 
 /**
  * Splits a document into overlapping, structure-aware chunks.
@@ -185,15 +195,7 @@ function splitOversized(
   opts: Required<ChunkOptions>,
 ): { start: number; end: number; tokens: number }[] {
   const parts: { start: number; end: number; tokens: number }[] = [];
-  const segmenter = new Intl.Segmenter(undefined, { granularity: 'sentence' });
-
-  for (const sentence of segmenter.segment(text.slice(start, end))) {
-    const range = trimRange(
-      text,
-      start + sentence.index,
-      start + sentence.index + sentence.segment.length,
-    );
-    if (range.end <= range.start) continue;
+  for (const range of sentenceRanges(text, start, end)) {
     const tokens = countTokens(text.slice(range.start, range.end));
     if (tokens <= opts.maxTokens) {
       parts.push({ ...range, tokens });
@@ -202,6 +204,34 @@ function splitOversized(
     }
   }
   return parts;
+}
+
+/** Trimmed sentence ranges of text[start, end), re-joined where a split hit an abbreviation. */
+function sentenceRanges(
+  text: string,
+  start: number,
+  end: number,
+): { start: number; end: number }[] {
+  const segmenter = new Intl.Segmenter(undefined, { granularity: 'sentence' });
+  const ranges: { start: number; end: number }[] = [];
+  let pending: { start: number; end: number } | null = null;
+
+  for (const sentence of segmenter.segment(text.slice(start, end))) {
+    const from = start + sentence.index;
+    const range = trimRange(text, from, from + sentence.segment.length);
+    if (range.end <= range.start) continue;
+    const merged: { start: number; end: number } = pending
+      ? { start: pending.start, end: range.end }
+      : range;
+    if (ABBREVIATION.test(text.slice(merged.start, merged.end))) {
+      pending = merged;
+    } else {
+      ranges.push(merged);
+      pending = null;
+    }
+  }
+  if (pending) ranges.push(pending);
+  return ranges;
 }
 
 /** Greedy word windows of at most `limit` tokens; a single overlong word is cut by length. */
@@ -256,9 +286,12 @@ function packPieces(pieces: Piece[], text: string, opts: Required<ChunkOptions>)
   let current: Piece[] = [];
   let ownFrom = 0; // index of the first piece in `current` that is not overlap
   let currentTokens = 0;
+  // Widened explicitly: TS does not track the assignment inside `emit`.
+  let previous = null as { pieces: Piece[]; ownFrom: number } | null;
 
   const emit = () => {
     chunks.push(toChunk(chunks.length, current, ownFrom, text));
+    previous = { pieces: current, ownFrom };
   };
 
   for (const piece of pieces) {
@@ -278,7 +311,22 @@ function packPieces(pieces: Piece[], text: string, opts: Required<ChunkOptions>)
     current.push(piece);
     currentTokens += piece.tokens;
   }
-  if (current.length > ownFrom) emit();
+  if (current.length > ownFrom) {
+    // A short tail that continues the previous chunk's section (it starts with overlap) is
+    // appended to that chunk instead of becoming a tiny chunk of its own.
+    const own = current.slice(ownFrom);
+    if (
+      previous &&
+      ownFrom > 0 &&
+      sumTokens(own) < opts.minSectionTokens &&
+      sumTokens(previous.pieces) + sumTokens(own) <= opts.maxTokens
+    ) {
+      chunks.pop();
+      current = [...previous.pieces, ...own];
+      ownFrom = previous.ownFrom;
+    }
+    emit();
+  }
   return chunks;
 }
 
