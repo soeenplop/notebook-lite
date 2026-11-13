@@ -69,10 +69,9 @@ Set per application (*Environment* tab). Never put the Supabase secret key into 
   `PODCASTS_PER_DAY`.
 - **worker**: `DATABASE_URL`, `LOG_LEVEL=info`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`,
   `OPENAI_API_KEY` (all required since M5), optional `OPENAI_CHAT_MODEL`,
-  `OPENAI_EMBEDDING_MODEL`. Podcast audio: `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_A`
-  (monologues and dialogues), `ELEVENLABS_VOICE_B` (dialogues), optional
-  `ELEVENLABS_MODEL_ID` (default `eleven_v3`) and `ELEVENLABS_BASE_URL`. The ElevenLabs values
-  are optional at boot: without them the worker logs a warning and podcast jobs fail with
+  `OPENAI_EMBEDDING_MODEL`. Podcast audio: `ELEVENLABS_API_KEY`, optional
+  `ELEVENLABS_MODEL_ID` (default `eleven_v3`) and `ELEVENLABS_BASE_URL`; the voices are fixed
+  per language in `SUPPORTED_LANGUAGES`. The ElevenLabs values are optional at boot: without them the worker logs a warning and podcast jobs fail with
   "Podcast audio is not configured yet". The worker image ships `ffmpeg`/`ffprobe` for joining
   the audio batches.
 

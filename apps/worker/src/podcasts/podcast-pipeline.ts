@@ -27,7 +27,7 @@ import {
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { type DialogueSynthesizer, ElevenLabsError } from './elevenlabs.client.js';
 import type { AudioTools } from './audio.js';
-import { buildDialogueBatches, type VoiceMap } from './tts-batches.js';
+import { buildDialogueBatches } from './tts-batches.js';
 
 /** Service-role client: bypasses RLS, so every query below filters by `user_id`. */
 export type ServiceDb = SupabaseClient<Database>;
@@ -44,7 +44,6 @@ export interface PodcastPipelineDeps {
   /** null when ElevenLabs is not configured; `configError` then says what is missing. */
   tts: DialogueSynthesizer | null;
   configError: string | null;
-  voices: VoiceMap;
   audio: AudioTools;
   logger: PipelineLogger;
   /** pg-boss retries after the first attempt; the last attempt marks the podcast failed. */
@@ -161,11 +160,6 @@ export class PodcastPipeline {
         cause: new Error(`ElevenLabs: ${deps.configError ?? 'not configured'}`),
       });
     }
-    if (mode === 'dialogue' && !deps.voices.B) {
-      throw new PodcastJobError(MESSAGES.notConfigured, false, {
-        cause: new Error('ElevenLabs: missing ELEVENLABS_VOICE_B for dialogues'),
-      });
-    }
 
     let script = parseScript(podcast.script);
     if (!script) {
@@ -183,7 +177,7 @@ export class PodcastPipeline {
     }
 
     await this.update(job, { status: 'synthesizing', error: null });
-    const batches = buildDialogueBatches(script.segments, deps.voices);
+    const batches = buildDialogueBatches(script.segments, getLanguage(language).podcastVoices);
     const bucket = deps.db.storage.from(PODCASTS_BUCKET);
     const folder = podcastStorageFolder(job.userId, job.notebookId, job.podcastId);
     const listed = await bucket.list(folder, { limit: 1000 });

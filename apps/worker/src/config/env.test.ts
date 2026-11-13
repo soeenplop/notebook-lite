@@ -34,16 +34,11 @@ describe('loadEnv', () => {
   });
 
   it('treats empty ElevenLabs values as unset and reports what podcasts need', () => {
-    const env = loadEnv({ ...required, ELEVENLABS_API_KEY: '', ELEVENLABS_VOICE_A: ' ' });
+    const env = loadEnv({ ...required, ELEVENLABS_API_KEY: ' ' });
     expect(env.ELEVENLABS_API_KEY).toBeUndefined();
-    expect(env.ELEVENLABS_VOICE_A).toBeUndefined();
-    expect(missingPodcastConfig(env)).toBe('missing ELEVENLABS_API_KEY, ELEVENLABS_VOICE_A');
+    expect(missingPodcastConfig(env)).toBe('missing ELEVENLABS_API_KEY');
 
-    const complete = loadEnv({
-      ...required,
-      ELEVENLABS_API_KEY: 'xi-test',
-      ELEVENLABS_VOICE_A: 'voice-a',
-    });
+    const complete = loadEnv({ ...required, ELEVENLABS_API_KEY: 'xi-test' });
     expect(missingPodcastConfig(complete)).toBeNull();
   });
 });

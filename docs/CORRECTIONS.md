@@ -6,6 +6,13 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Podcast voices per notebook language
+
+- **Scope:** Podcast TTS (`docs/IMPLEMENTATION_PLAN.md` §5.5, §7, Q4b; `packages/shared` languages; worker env).
+- **Original decision:** One voice pair for all languages, set via `ELEVENLABS_VOICE_A`/`ELEVENLABS_VOICE_B` in the worker environment.
+- **Correction:** Each supported language has its own voice pair (`podcastVoices: { A, B }` in `SUPPORTED_LANGUAGES`), chosen by the podcast language. German: A `gSZiss4v1BGsE1cTgoWF`, B `cwXXmRbp4lGQdqLfbcKH`. English: A `T2sZgOl8ol4kf4u6yM2z`, B `BAdH0bMfq6VleQGLXj38`. The two voice env vars are removed; only `ELEVENLABS_API_KEY` is needed for podcast audio. Resolves Q4b.
+- **Rationale:** Voice IDs provided by the project owner, separately for German and English. Native voices per language sound better than one pair for both. Voice IDs are not secrets, and keeping them next to the other per-language settings means adding a language is one entry in one place.
+
 ## 2026-11-13 — M5 podcasts: ElevenLabs spike results and implementation details
 
 - **Scope:** Podcast generation (`docs/IMPLEMENTATION_PLAN.md` §4 Storage, §5.5, §5.6, §7, §10 M5).
