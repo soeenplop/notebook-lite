@@ -6,6 +6,13 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Podcast voices: back to the voice-library voices
+
+- **Scope:** Podcast TTS voices (`SUPPORTED_LANGUAGES` in `packages/shared`).
+- **Original decision:** ElevenLabs default voices (see the next entry), because the free plan rejected library voices.
+- **Correction:** The voice-library voices are used again: German `gSZiss4v1BGsE1cTgoWF` (A) / `cwXXmRbp4lGQdqLfbcKH` (B), English `T2sZgOl8ol4kf4u6yM2z` (A) / `BAdH0bMfq6VleQGLXj38` (B). Both pairs were tested against text-to-dialogue with `eleven_v3`.
+- **Rationale:** Decision by the project owner after the ElevenLabs account was changed so the library voices work via the API. They were chosen for the podcasts originally.
+
 ## 2026-11-13 — Podcast voices: ElevenLabs default voices
 
 - **Scope:** Podcast TTS voices (`SUPPORTED_LANGUAGES` in `packages/shared`).
