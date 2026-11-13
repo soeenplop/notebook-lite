@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # NestJS background worker. Build context: repository root.
 #   docker build -f docker/worker.Dockerfile -t notebook-lite-worker .
-# ffmpeg is added with the podcast pipeline (M5).
+# The runtime includes ffmpeg/ffprobe for joining podcast audio batches.
 
 ARG NODE_IMAGE=node:26.13.0-slim
 
@@ -39,6 +39,10 @@ RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund -w @notebook-lite/wo
 
 # --- runtime -------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS runtime
+# ffmpeg concatenates and re-encodes the podcast MP3 batches; ffprobe measures the duration.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production \
     WORKER_PORT=4001
 WORKDIR /app

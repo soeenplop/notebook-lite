@@ -1,0 +1,90 @@
+import { suggestPodcastTopics } from '@notebook-lite/ai';
+import {
+  createPodcastInputSchema,
+  listPodcastsInputSchema,
+  podcastByIdInputSchema,
+  suggestPodcastTopicsInputSchema,
+} from '@notebook-lite/shared';
+import { TRPCError } from '@trpc/server';
+import { protectedProcedure, router } from '../trpc/trpc.js';
+import {
+  createPodcast,
+  deletePodcast,
+  getNotebookLanguage,
+  getPodcast,
+  listPodcasts,
+  listSourceOptions,
+  requireReadySources,
+} from './podcasts.repository.js';
+import { sampleExcerpts } from './topic-sampling.js';
+
+const HOUR_MS = 60 * 60 * 1000;
+
+export const podcastsRouter = router({
+  /** Podcasts of a notebook, newest first. The web polls this while any is in production. */
+  list: protectedProcedure
+    .input(listPodcastsInputSchema)
+    .query(({ ctx, input }) => listPodcasts(ctx.supabase, input.notebookId)),
+
+  /** One podcast with script, sources and short-lived signed audio URLs once ready. */
+  get: protectedProcedure
+    .input(podcastByIdInputSchema)
+    .query(({ ctx, input }) => getPodcast(ctx.supabase, input.id)),
+
+  /** Sources the wizard can offer: the notebook's ready sources. */
+  sourceOptions: protectedProcedure
+    .input(listPodcastsInputSchema)
+    .query(({ ctx, input }) => listSourceOptions(ctx.supabase, input.notebookId)),
+
+  /**
+   * Three topic suggestions from a sample of the selected sources, in the notebook language.
+   * Synchronous LLM call, so it is rate limited per user.
+   */
+  suggestTopics: protectedProcedure
+    .input(suggestPodcastTopicsInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const language = await getNotebookLanguage(ctx.supabase, input.notebookId);
+      const sources = await requireReadySources(ctx.supabase, input.notebookId, input.sourceIds);
+      const allowed = ctx.rateLimiter.consume(
+        'podcast-suggestions',
+        ctx.user.id,
+        ctx.limits.podcastSuggestionsPerHour,
+        HOUR_MS,
+      );
+      if (!allowed) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Too many topic suggestions. Try again later or enter a topic yourself.',
+        });
+      }
+      const excerpts = await sampleExcerpts(ctx.supabase, input.notebookId, sources);
+      if (excerpts.length === 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'The selected sources contain no text to suggest topics from',
+        });
+      }
+      try {
+        const topics = await suggestPodcastTopics(ctx.ai.chat, { language, excerpts });
+        return { topics };
+      } catch (error) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Could not suggest topics. Please try again.',
+          cause: error,
+        });
+      }
+    }),
+
+  /** Creates a podcast and enqueues its production (at most one in production per user). */
+  create: protectedProcedure
+    .input(createPodcastInputSchema)
+    .mutation(({ ctx, input }) =>
+      createPodcast(ctx.supabase, ctx.jobs, ctx.user.id, input, ctx.limits.podcastsPerDay),
+    ),
+
+  /** Deletes a podcast and its audio files. */
+  delete: protectedProcedure
+    .input(podcastByIdInputSchema)
+    .mutation(({ ctx, input }) => deletePodcast(ctx.supabase, input.id)),
+});

@@ -167,13 +167,13 @@ Exception: `messages` reach their notebook through `chat_id` and have no `notebo
    - **Context**: retrieve chunks relevant to the topic (higher k, ~20–40k tokens budget depending on length).
    - **Script** (`status = 'scripting'`): target word counts at ~150 wpm → 2 min ≈ 300, 6 min ≈ 900, 15 min ≈ 2,250 words. For 15 min: outline first, then generate per section to stay within output limits. Output via `generateObject`: `{ title, segments: [{ speaker: 'A'|'B', text }] }`. Monologue uses only `A`. Prompt: grounded in sources only, written in `podcast.language`, conversational, no markdown, no citations read aloud. The words-per-minute rate is configurable per language in `SUPPORTED_LANGUAGES`.
    - **TTS** (`status = 'synthesizing'`) uses the **ElevenLabs text-to-dialogue endpoint** for both modes:
-     - Dialogue maps speaker A/B to `ELEVENLABS_VOICE_A`/`_B`. Monologue sends a single-voice input list.
+     - Dialogue maps speaker A/B to the notebook language's voices (`podcastVoices` in `SUPPORTED_LANGUAGES`). Monologue sends a single-voice input list with voice A.
      - The language comes from `podcast.language`, passed as the endpoint's language parameter if it supports one. Otherwise the language of the script text drives it.
      - The script is split at segment boundaries into batches below the endpoint's per-request character limit. A 15-minute script needs several requests.
      - Each batch is synthesized with retries, and the resulting MP3s are concatenated with `ffmpeg` (concat demuxer, re-encoded to a uniform 128 kbps).
      - Each batch's audio is cached in Storage so a failed job resumes instead of starting over.
-     - The exact character limit, the language parameter, and the model ID are confirmed in a short spike at the start of M5.
-   - **Store**: upload `podcasts/{uid}/{notebookId}/{podcastId}.mp3`, set `duration_seconds`, `status = 'ready'`.
+     - Spike results (see CORRECTIONS): ≤ 2,000 characters per request, `language_code` (ISO 639-1), model `eleven_v3`, output `mp3_44100_128`.
+   - **Store**: upload `podcasts/{uid}/{notebookId}/{podcastId}/podcast.mp3` (batches `batch-{n}.mp3` in the same folder), set `duration_seconds`, `status = 'ready'`.
    - Persist the script in `podcasts.script` so TTS can be retried without regenerating text.
 5. **Web**: podcast list with progress status (polling), audio player via short-lived signed URL, download button, script transcript view.
 
@@ -204,7 +204,7 @@ Exception: `messages` reach their notebook through `chat_id` and have no `notebo
 | `SUPABASE_SECRET_KEY` | | ✓ (enqueue only, if needed) | ✓ |
 | `DATABASE_URL` (direct connection, for pg-boss) | | ✓ | ✓ |
 | `OPENAI_API_KEY`, `OPENAI_CHAT_MODEL=gpt-6.1-terra`, `OPENAI_EMBEDDING_MODEL=text-embedding-3-large` | | ✓ | ✓ |
-| `ELEVENLABS_API_KEY`, `ELEVENLABS_MODEL_ID` (dialogue-capable model), `ELEVENLABS_VOICE_A`, `ELEVENLABS_VOICE_B` (voice IDs pending) | | | ✓ |
+| `ELEVENLABS_API_KEY`, `ELEVENLABS_MODEL_ID` (dialogue-capable model); voices live per language in `SUPPORTED_LANGUAGES` | | | ✓ |
 | `CORS_ORIGIN` | | ✓ | |
 
 One root `.env.example` lists all keys, grouped by app; local dev loads the root `.env`. Real secrets only in Dokploy.
@@ -308,7 +308,7 @@ After G, **M3, M4 and M5 run in parallel** on separate branches and merge in tha
 
 **Open**
 
-- **Q4b — Voices:** ElevenLabs voice IDs for speaker A and B (to be provided; needed before M5).
+- ~~**Q4b — Voices:**~~ Resolved 2026-11-13: one voice pair per language in `SUPPORTED_LANGUAGES` (see CORRECTIONS).
 - **Q6 — Model availability:** Confirm `gpt-6.1-terra` access and limits (context/output tokens) on the account.
 
 **Resolved (2026-11-12)**

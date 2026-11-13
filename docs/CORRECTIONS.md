@@ -6,6 +6,50 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Podcast voices per notebook language
+
+- **Scope:** Podcast TTS (`docs/IMPLEMENTATION_PLAN.md` §5.5, §7, Q4b; `packages/shared` languages; worker env).
+- **Original decision:** One voice pair for all languages, set via `ELEVENLABS_VOICE_A`/`ELEVENLABS_VOICE_B` in the worker environment.
+- **Correction:** Each supported language has its own voice pair (`podcastVoices: { A, B }` in `SUPPORTED_LANGUAGES`), chosen by the podcast language. German: A `gSZiss4v1BGsE1cTgoWF`, B `cwXXmRbp4lGQdqLfbcKH`. English: A `T2sZgOl8ol4kf4u6yM2z`, B `BAdH0bMfq6VleQGLXj38`. The two voice env vars are removed; only `ELEVENLABS_API_KEY` is needed for podcast audio. Resolves Q4b.
+- **Rationale:** Voice IDs provided by the project owner, separately for German and English. Native voices per language sound better than one pair for both. Voice IDs are not secrets, and keeping them next to the other per-language settings means adding a language is one entry in one place.
+
+## 2026-11-13 — M5 podcasts: ElevenLabs spike results and implementation details
+
+- **Scope:** Podcast generation (`docs/IMPLEMENTATION_PLAN.md` §4 Storage, §5.5, §5.6, §7, §10 M5).
+- **Original decision:**
+  - The text-to-dialogue character limit, language parameter and model ID were to be confirmed in a spike.
+  - The final MP3 lives at `podcasts/{uid}/{notebookId}/{podcastId}.mp3`.
+  - Topic suggestions sample "the first chunks plus a diverse vector sample" per source.
+  - Podcast rate limit: "1 queued/active per user" (Nest throttler).
+- **Correction:**
+  - **Spike (ElevenLabs docs, 2026-11-13):** `POST /v1/text-to-dialogue` with
+    `{ inputs: [{ text, voice_id }], model_id, language_code }`; `model_id` defaults to `eleven_v3`
+    (the model behind text-to-dialogue; German is supported); `language_code` is ISO 639-1 and is
+    ignored by models that don't support it; `output_format` query parameter, default
+    `mp3_44100_128`; auth header `xi-api-key`; at most 10 distinct voices. The endpoint documents
+    **2,000 characters across all inputs per request** for reliable output (plain TTS with
+    `eleven_v3` allows 5,000). Batches therefore stay at or below 2,000 characters and break at
+    segment boundaries (sentence or word boundaries only for a single overlong segment). A
+    15-minute English script (~13,500 characters) needs about 7 requests. No blocking limits, so
+    the per-segment TTS fallback is not needed. Request stitching (`previous_request_ids`) is not
+    used yet.
+  - Audio lives in a folder per podcast, following the general `{user_id}/{notebook_id}/{entity_id}/{filename}`
+    convention: `{uid}/{notebookId}/{podcastId}/podcast.mp3` plus `batch-{n}.mp3` while the job
+    runs (deleted after success). Deleting a podcast removes the whole folder.
+  - Topic suggestions sample the first two chunks of each source plus chunks evenly spread over the
+    rest (by ordinal), up to 16 chunks and ~14k tokens, instead of a vector-diversity sample. It
+    needs no embedding call and no new SQL function, and covers the whole document.
+  - Limits: one podcast in production per user, checked in the API **and** enforced by a partial
+    unique index (migration `20261113300000`); plus `PODCASTS_PER_DAY` (default 10, counted in the
+    database) and `PODCAST_SUGGESTIONS_PER_HOUR` (default 20, in memory per API instance). A
+    stuck podcast can always be deleted by its owner.
+  - The worker's ElevenLabs variables are optional at boot (voice IDs are still open, Q4b): the
+    worker keeps running ingestion, and podcast jobs fail with "Podcast audio is not configured
+    yet". The API and the worker now require `OPENAI_API_KEY`.
+- **Rationale:** Spike results from the official API reference; the remaining points keep M5
+  within its scope (no new SQL beyond the index) and make the limits hold under concurrent
+  requests.
+
 ## 2026-11-13 — Chat (M4): per-user limit, request body, source viewer
 
 - **Scope:** Grounded chat (`docs/IMPLEMENTATION_PLAN.md` §5.4, §5.6, §6; `apps/api/src/chat`, `apps/web/src/components/chats`).

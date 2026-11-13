@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { describe, expect, it } from 'vitest';
 import type { AuthUser } from '../auth/auth.types.js';
 import { fakeDb, type FakeResult } from '../testing/fake-db.js';
-import { fakeJobs } from '../testing/fixtures.js';
+import { fakeJobs, testContext } from '../testing/fixtures.js';
 import { appRouter } from '../trpc/app-router.js';
 
 const user: AuthUser = { id: 'user-1', email: 'u@example.com', accessToken: 'token' };
@@ -31,7 +31,10 @@ const summary = {
 
 function callerWith(...results: FakeResult[]) {
   const { db, queries } = fakeDb(...results);
-  return { caller: appRouter.createCaller({ user, supabase: db, jobs: fakeJobs() }), queries };
+  return {
+    caller: appRouter.createCaller(testContext({ user, supabase: db, jobs: fakeJobs() })),
+    queries,
+  };
 }
 
 const ok = (data: unknown): FakeResult => ({ data, error: null });
@@ -48,7 +51,9 @@ async function trpcCode(promise: Promise<unknown>): Promise<string> {
 
 describe('chats router', () => {
   it('requires a session', async () => {
-    const caller = appRouter.createCaller({ user: null, supabase: null, jobs: fakeJobs() });
+    const caller = appRouter.createCaller(
+      testContext({ user: null, supabase: null, jobs: fakeJobs() }),
+    );
     expect(await trpcCode(caller.chats.list({ notebookId }))).toBe('UNAUTHORIZED');
   });
 
