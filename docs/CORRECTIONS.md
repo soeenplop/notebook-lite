@@ -6,6 +6,13 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-13 — Podcast scripts: podcast-style opening and closing
+
+- **Scope:** Podcast script prompts (`packages/ai/src/podcast-prompts.ts`).
+- **Original decision:** Open directly with a hook from the excerpts and explicitly no greeting; close with takeaways or an open question.
+- **Correction:** Episodes open in three beats: a cold open (hook from the excerpts), a short welcome (in dialogue mode the hosts also greet each other) and a preview of the episode. They close in two beats: takeaways or an open question, ideally calling back to the hook, then a short farewell (hosts thank each other and the listener). The opening takes about 10 percent of the episode. The model must not invent a show name or host names, ask listeners to subscribe or rate, or announce future episodes. Outlined episodes put the opening only in the first section and the farewell only in the last.
+- **Rationale:** Feedback from the project owner: start and end felt abrupt. A welcome and a farewell make episodes sound like a real podcast. Hosts and show stay nameless because voices are fixed per language and nothing in the product defines names.
+
 ## 2026-11-13 — Podcast speakers: 10 % faster
 
 - **Scope:** Podcast audio (`apps/worker` ffmpeg step) and script length (`podcastWordTarget` in `packages/shared`).
