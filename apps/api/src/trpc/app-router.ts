@@ -1,5 +1,6 @@
 import { chatsRouter } from '../chats/chats.router.js';
 import { notebooksRouter } from '../notebooks/notebooks.router.js';
+import { sourcesRouter } from '../sources/sources.router.js';
 import { protectedProcedure, router } from './trpc.js';
 
 /**
@@ -12,6 +13,7 @@ export const appRouter = router({
   }),
   notebooks: notebooksRouter,
   chats: chatsRouter,
+  sources: sourcesRouter,
 });
 
 export type AppRouter = typeof appRouter;

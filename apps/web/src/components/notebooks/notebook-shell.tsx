@@ -2,7 +2,7 @@
 
 import { notebookIdSchema } from '@notebook-lite/shared';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeftIcon, FileTextIcon, MicIcon } from 'lucide-react';
+import { ArrowLeftIcon, MicIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ComponentType, ReactNode } from 'react';
@@ -12,11 +12,12 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { languageName, pluralize } from '@/lib/format';
 import { useTRPC } from '@/lib/trpc/react';
+import { SourcesPanel } from '../sources/sources-panel';
 import { NotebookActions } from './notebook-actions';
 
 /**
- * Notebook workspace: header plus sections for sources, chats and podcasts. Chats are live (M4);
- * sources and podcasts fill their sections in their milestones.
+ * Notebook workspace: header, sources panel (M3), chats (M4); podcasts fill their section in
+ * their milestone.
  */
 export function NotebookShell({ notebookId }: { notebookId: string }) {
   const trpc = useTRPC();
@@ -67,14 +68,9 @@ export function NotebookShell({ notebookId }: { notebookId: string }) {
         <NotebookActions notebook={data} onDeleted={() => router.replace('/')} />
       </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Section
-          icon={FileTextIcon}
-          title="Sources"
-          count={pluralize(data.counts.sources, 'source')}
-        >
-          Upload PDF, DOCX or Markdown files, or add web pages by URL.
-        </Section>
+      <SourcesPanel notebookId={data.id} />
+
+      <div className="grid gap-4 md:grid-cols-2">
         <ChatsPanel notebookId={data.id} />
         <Section icon={MicIcon} title="Podcasts" count={pluralize(data.counts.podcasts, 'podcast')}>
           Turn sources into a monologue or a two-person dialogue.
