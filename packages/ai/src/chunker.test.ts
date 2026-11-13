@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { chunkDocument, documentText, type ExtractedDocument } from './chunker.js';
+import {
+  chunkDocument,
+  chunkEmbeddingText,
+  documentText,
+  type ExtractedDocument,
+} from './chunker.js';
 import { countTokens } from './tokens.js';
 
 /** A paragraph of `words` words (about two tokens each). */
@@ -148,5 +153,27 @@ describe('chunkDocument', () => {
     expect(() => chunkDocument({ segments: [] }, { targetTokens: 500, maxTokens: 400 })).toThrow(
       /targetTokens <= maxTokens/,
     );
+  });
+});
+
+describe('chunkEmbeddingText', () => {
+  it('prefixes the source title and heading path', () => {
+    const chunk = { content: 'It costs 4 million.', headingPath: ['Budget', 'Pier'] };
+    expect(chunkEmbeddingText(chunk, 'Harbour Report')).toBe(
+      'Harbour Report\nBudget > Pier\n\nIt costs 4 million.',
+    );
+  });
+
+  it('skips a heading that repeats the title and empty parts', () => {
+    expect(chunkEmbeddingText({ content: 'x', headingPath: ['Report', 'A'] }, 'Report')).toBe(
+      'Report\nA\n\nx',
+    );
+    expect(chunkEmbeddingText({ content: 'x', headingPath: [] }, ' ')).toBe('x');
+    expect(chunkEmbeddingText({ content: 'x', headingPath: ['A'] }, null)).toBe('A\n\nx');
+  });
+
+  it('caps the header length', () => {
+    const text = chunkEmbeddingText({ content: 'x', headingPath: [] }, 'T'.repeat(1000));
+    expect(text).toBe(`${'T'.repeat(300)}\n\nx`);
   });
 });

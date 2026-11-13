@@ -92,7 +92,11 @@ const failing = () => {
 
 describe('IngestSourceService', () => {
   it('ingests a Markdown file: chunks with embeddings, then ready with title and tokens', async () => {
-    const { service, source, chunks, statuses } = setup({ file: fixture('notes.md') });
+    const embedded: string[] = [];
+    const { service, source, chunks, statuses } = setup({
+      file: fixture('notes.md'),
+      embed: (values) => embedded.push(...values),
+    });
     await service.run(job, context());
 
     expect(statuses).toEqual(['processing', 'ready']);
@@ -114,6 +118,8 @@ describe('IngestSourceService', () => {
     });
     expect(String(first?.['content'])).toContain('The harbour was dredged in 1952.');
     expect(String(first?.['embedding'])).toMatch(/^\[0(,0){3071}\]$/);
+    // Embeddings see the source title as context; the stored content does not.
+    expect(embedded[0]).toBe(`Harbour Notes\n\n${String(first?.['content'])}`);
     const tokens = chunks().reduce((sum, chunk) => sum + Number(chunk['token_count']), 0);
     expect(source()?.['token_count']).toBe(tokens);
   });
