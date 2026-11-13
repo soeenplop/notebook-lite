@@ -40,9 +40,42 @@ describe('extractPdf', () => {
     expect(result.title).toBe('Harbour Chronicle');
     expect(result.pageCount).toBe(2);
     expect(result.document.segments).toEqual([
-      { text: 'The lighthouse was built in 1890.\nIt stands on the northern cliff.', page: 1 },
+      { text: 'The lighthouse was built in 1890. It stands on the northern cliff.', page: 1 },
       { text: 'Fishermen sell their catch at dawn.', page: 2 },
     ]);
+  });
+
+  it('reconstructs headings, paragraphs and lists and drops running footers', async () => {
+    const result = await extractPdf(fixture('structured.pdf'));
+    expect(result.pageCount).toBe(3);
+    expect(result.document.segments).toEqual([
+      {
+        text: [
+          '# Harbour Report',
+          '## Overview',
+          'The harbour was founded in 1850 and has grown steadily ever since. Its construction took almost twenty years and involved hundreds of local workers from the surrounding villages.',
+          'Today the harbour serves fishermen, ferries and a growing number of sailing boats during the summer months.',
+          '## Facilities',
+          '- Lighthouse on the northern cliff\n- Fish market at the old pier',
+        ].join('\n\n'),
+        page: 1,
+      },
+      {
+        text: '## Budget\n\n### Costs in detail\n\nThe renovation of the pier is expected to cost 4.2 million euros, most of which is covered by regional funds.',
+        page: 2,
+      },
+      {
+        text: 'Maintenance is planned every five years and is financed by mooring fees paid by the boat owners.',
+        page: 3,
+      },
+    ]);
+    const chunks = chunkDocument(result.document, {
+      targetTokens: 40,
+      maxTokens: 60,
+      overlapTokens: 10,
+      minSectionTokens: 1,
+    });
+    expect(chunks.at(-1)?.headingPath).toEqual(['Harbour Report', 'Budget', 'Costs in detail']);
   });
 
   it('keeps page ranges through chunking', async () => {

@@ -1,9 +1,10 @@
 import type { ExtractedDocument } from '@notebook-lite/ai';
 import type { FileSourceKind } from '@notebook-lite/shared';
 import mammoth from 'mammoth';
-import { extractText, getDocumentProxy, getMeta } from 'unpdf';
+import { getDocumentProxy, getMeta } from 'unpdf';
 import { IngestError } from './errors.js';
 import { firstHeading, htmlToMarkdown, normalizeMarkdown } from './markdown.js';
+import { type PdfTextItem, pdfPagesToMarkdown } from './pdf-layout.js';
 
 /** Output of an extractor: Markdown segments plus metadata for the source row. */
 export interface Extraction {
@@ -45,8 +46,9 @@ export function extractMarkdown(data: Uint8Array): Extraction {
 }
 
 /**
- * PDF text page by page (pdf.js via unpdf), keeping page numbers for citations. A PDF without
- * any text layer (scanned) fails: OCR is out of scope.
+ * PDF text page by page (pdf.js via unpdf), keeping page numbers for citations. Headings,
+ * paragraphs and lists are reconstructed from font sizes and positions (see `pdf-layout.ts`).
+ * A PDF without any text layer (scanned) fails: OCR is out of scope.
  */
 export async function extractPdf(data: Uint8Array): Promise<Extraction> {
   let pdf;
@@ -61,8 +63,18 @@ export async function extractPdf(data: Uint8Array): Promise<Extraction> {
     throw new IngestError(message, { cause });
   }
   try {
-    const { totalPages, text } = await extractText(pdf, { mergePages: false });
-    const segments = text
+    const totalPages = pdf.numPages;
+    const pages: PdfTextItem[][] = [];
+    for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+      // Pages are read one after another to keep memory flat on large PDFs.
+      // oxlint-disable-next-line no-await-in-loop
+      const page = await pdf.getPage(pageNumber);
+      // oxlint-disable-next-line no-await-in-loop
+      const content = await page.getTextContent();
+      pages.push(content.items.flatMap((item) => ('str' in item ? [toTextItem(item)] : [])));
+      page.cleanup();
+    }
+    const segments = pdfPagesToMarkdown(pages)
       .map((pageText, index) => ({ text: normalizeMarkdown(pageText), page: index + 1 }))
       .filter((segment) => segment.text.length > 0);
     if (segments.length === 0) {
@@ -77,6 +89,19 @@ export async function extractPdf(data: Uint8Array): Promise<Extraction> {
   } finally {
     await pdf.loadingTask.destroy();
   }
+}
+
+function toTextItem(item: {
+  str: string;
+  transform: number[];
+  width: number;
+  height: number;
+  hasEOL: boolean;
+}): PdfTextItem {
+  const [a = 0, b = 0, c = 0, d = 0, x = 0, y = 0] = item.transform;
+  // Rotated or skewed text still has its font size in the transform's scale.
+  const size = Math.hypot(c, d) || Math.hypot(a, b) || item.height;
+  return { str: item.str, x, y, width: item.width, size, hasEOL: item.hasEOL };
 }
 
 /** DOCX → HTML (mammoth, keeps headings and lists) → Markdown. */
