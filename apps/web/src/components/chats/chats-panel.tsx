@@ -79,7 +79,7 @@ export function ChatsPanel({
           No chats yet. Start one to ask questions answered only from your sources, with citations.
         </p>
       ) : (
-        <ul className="-mx-2 grid gap-0.5">
+        <ul className="-mx-2 grid grid-cols-1 gap-0.5">
           {chats.data.map((chat) => (
             <li
               key={chat.id}
