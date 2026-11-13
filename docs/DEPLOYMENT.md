@@ -63,7 +63,10 @@ the `production` environment would work as well and take precedence.
 Set per application (*Environment* tab). Never put the Supabase secret key into `web`.
 
 - **api**: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`,
-  `CORS_ORIGIN=https://notebook-lite.soeenplop.dev`, `LOG_LEVEL=info`, optional `RATE_LIMIT_PER_MINUTE`.
+  `CORS_ORIGIN=https://notebook-lite.soeenplop.dev`, `LOG_LEVEL=info`, `OPENAI_API_KEY`
+  (required since M4: chat), optional `OPENAI_CHAT_MODEL` (default `gpt-6.1-terra`),
+  `OPENAI_EMBEDDING_MODEL` (default `text-embedding-3-large`), `RATE_LIMIT_PER_MINUTE` and
+  `CHAT_MESSAGES_PER_MINUTE` (per-user chat limit, default 10).
 - **worker**: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`, optional
   `OPENAI_CHAT_MODEL` / `OPENAI_EMBEDDING_MODEL`, `LOG_LEVEL=info`. It refuses to start without
   them (source ingestion, M3). ElevenLabs keys follow with podcasts (M5).

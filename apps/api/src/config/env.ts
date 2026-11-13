@@ -1,3 +1,4 @@
+import { aiEnvSchema } from '@notebook-lite/ai';
 import { z } from 'zod';
 
 export const ENV = Symbol('ENV');
@@ -21,6 +22,10 @@ export const apiEnvSchema = z.object({
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
   /** Requests per minute and client IP across the whole API. */
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(300),
+  /** Chat messages per minute and user (on top of the per-IP limit). */
+  CHAT_MESSAGES_PER_MINUTE: z.coerce.number().int().min(1).default(10),
+  // OpenAI: OPENAI_API_KEY, OPENAI_CHAT_MODEL, OPENAI_EMBEDDING_MODEL
+  ...aiEnvSchema.shape,
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

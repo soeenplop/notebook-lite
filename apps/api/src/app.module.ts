@@ -6,9 +6,13 @@ import {
   RequestMethod,
 } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import { aiModelsProvider } from './ai/ai-models.provider.js';
 import { AuthGuard } from './auth/auth.guard.js';
 import { AuthService } from './auth/auth.service.js';
 import { createSupabaseJwks, JWKS } from './auth/jwks.js';
+import { CHAT_RATE_LIMITER, ChatController } from './chat/chat.controller.js';
+import { ChatStreamService } from './chat/chat-stream.service.js';
+import { UserRateLimiter } from './chat/user-rate-limiter.js';
 import { type ApiEnv, ENV } from './config/env.js';
 import { HealthController } from './health/health.controller.js';
 import { loggerParams } from './logging.js';
@@ -24,7 +28,7 @@ export class AppModule implements NestModule {
       module: AppModule,
       global: true,
       imports: [LoggerModule.forRoot(loggerParams(env))],
-      controllers: [HealthController],
+      controllers: [HealthController, ChatController],
       providers: [
         { provide: ENV, useValue: env },
         { provide: JWKS, useFactory: () => createSupabaseJwks(env) },
@@ -34,6 +38,12 @@ export class AppModule implements NestModule {
         jobQueueProvider,
         JobQueueShutdown,
         TrpcService,
+        aiModelsProvider,
+        ChatStreamService,
+        {
+          provide: CHAT_RATE_LIMITER,
+          useFactory: () => new UserRateLimiter(env.CHAT_MESSAGES_PER_MINUTE),
+        },
       ],
       exports: [ENV, AuthService, AuthGuard, SupabaseService],
     };
