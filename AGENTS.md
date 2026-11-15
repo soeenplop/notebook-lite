@@ -33,6 +33,7 @@ npm run db:push      # apply migrations to the remote project
 npm run db:test      # pgTAP RLS tests against the remote project (rolled back)
 npm run db:config    # push auth config + email templates (supabase/config.toml)
 npm run db:types     # regenerate packages/db types after schema changes
+npm run test:e2e     # Playwright smoke tests (needs `npm run build -w @notebook-lite/web` first)
 ```
 
 ## Stack facts
@@ -48,7 +49,7 @@ npm run db:types     # regenerate packages/db types after schema changes
 - Supabase Cloud only, no local stack: project `notebook-lite` (ref `tmwmklntjantjchkhmrg`) serves dev and prod. The CLI is linked; `db:push` changes the live database, so test migrations carefully. JWTs are ES256, verified via JWKS.
 - Notebook languages: `de`, `en`.
 - TTS: ElevenLabs text-to-dialogue endpoint (also for monologues), batched; ffmpeg joins the batches in the worker.
-- Deploy: Dokploy project at `dokploy.soeenplop.dev`, auto-deploy on push to `main`. Dokploy CLI available. Web: `notebook.soeenplop.dev`, API: `notebook-api.soeenplop.dev`.
+- Deploy: Dokploy project `notebook-lite` at `dokploy.soeenplop.dev`; images from `docker/*.Dockerfile`. Every push to `main` deploys via `.github/workflows/deploy.yml` after CI: migrations + RLS tests → Dokploy deploy → production smoke test (see `docs/DEPLOYMENT.md`). Dokploy CLI reads `DOKPLOY_URL`/`DOKPLOY_AUTH_TOKEN`. Web: `notebook.soeenplop.dev`, API: `notebook-api.soeenplop.dev`.
 
 ## Rules
 
@@ -62,6 +63,8 @@ npm run db:types     # regenerate packages/db types after schema changes
 - **Tests:** Vitest; mock OpenAI/ElevenLabs (no real external calls in tests/CI).
 - **Secrets:** never commit them; document every new env var in the root `.env.example`.
 - **URL fetching:** always through the SSRF-guarded fetcher.
+- **Migrations are deployed before the apps:** keep them backwards compatible with the running version (expand first, contract in a later release).
+- **Logging:** use Nest's `Logger` (backed by pino, JSON in production); never log tokens, cookies or secrets. Expensive procedures (chat, podcasts) get per-user rate limits on top of the global per-IP limit.
 
 ## Working approach
 
