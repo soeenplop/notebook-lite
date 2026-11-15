@@ -28,6 +28,7 @@
     "concurrently": "10.0.7",
     "oxlint": "1.93.0",
     "oxlint-tsgolint": "7.0.2007",
+    "pino-pretty": "13.2.0",
     "prettier": "3.10.1",
     "supabase": "3.1.0",
     "typescript": "7.0.2",

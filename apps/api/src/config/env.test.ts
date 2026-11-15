@@ -19,6 +19,7 @@ describe('loadEnv', () => {
       API_PORT: 4000,
       CORS_ORIGIN: ['http://localhost:3000', 'https://notebook.soeenplop.dev'],
       LOG_LEVEL: 'info',
+      RATE_LIMIT_PER_MINUTE: 300,
     });
   });
 
