@@ -137,7 +137,7 @@ Exception: `messages` reach their notebook through `chat_id` and have no `notebo
      - DOCX: `mammoth` → HTML → Markdown (`turndown`) to retain headings.
      - MD: read as-is.
      - URL: fetch with SSRF protection (http/https only, standard web ports, block private/link-local IPs after DNS resolution and again at connect time, redirect limit with per-hop checks, timeout, max size, HTML only) → `@mozilla/readability` + `jsdom` → Markdown. Store the Markdown snapshot in Storage for reproducibility.
-   - **Chunk**: structure-aware splitter (headings/paragraphs), ~800 tokens target, ~120 overlap, never cross page boundaries for PDFs without recording `page_start/page_end`.
+   - **Chunk**: structure-aware splitter (headings/paragraphs), ~450 tokens target, ~70 overlap, recording `page_start/page_end` and the heading path.
    - **Embed**: AI SDK `embedMany` in batches (≤ 2048 inputs, token-aware), retry with backoff.
    - **Persist**: delete earlier chunks of the source, insert the new ones in batches, then set `status = 'ready'`, `title` (`<title>` for pages, else the first heading).
    - Failures → `status = 'failed'` with a user-readable `error`; pg-boss retries transient errors (3×, exponential).
