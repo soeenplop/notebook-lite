@@ -58,7 +58,10 @@ export function SourcesPanel({ notebookId }: { notebookId: string }) {
   };
 
   return (
-    <section className="grid content-start gap-4 rounded-xl border p-4" aria-labelledby="sources">
+    <section
+      className="grid min-w-0 grid-cols-1 content-start gap-4 rounded-xl border p-4"
+      aria-labelledby="sources"
+    >
       <div className="flex items-center justify-between gap-2">
         <h2 id="sources" className="flex items-center gap-2 font-medium">
           <FileTextIcon className="size-4 text-muted-foreground" aria-hidden />
@@ -71,7 +74,7 @@ export function SourcesPanel({ notebookId }: { notebookId: string }) {
         )}
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <UploadDropzone notebookId={notebookId} onUploaded={refresh} />
         <AddUrlForm notebookId={notebookId} onAdded={refresh} />
       </div>
@@ -90,7 +93,7 @@ export function SourcesPanel({ notebookId }: { notebookId: string }) {
           No sources yet. Upload PDF, DOCX or Markdown files, or add a web page by URL.
         </p>
       ) : (
-        <ul className="grid gap-2">
+        <ul className="grid grid-cols-1 gap-2">
           {sources.data.map((source) => (
             <SourceItem key={source.id} source={source} onDeleted={refresh} />
           ))}

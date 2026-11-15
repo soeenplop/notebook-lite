@@ -207,7 +207,7 @@ function SourcesStep({
           {allSelected ? 'Clear' : 'Select all'}
         </Button>
       </div>
-      <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-lg border p-2">
+      <ul className="grid max-h-72 grid-cols-1 gap-1 overflow-y-auto rounded-lg border p-2">
         {sources.data.map((source) => (
           <li key={source.id}>
             <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
@@ -218,7 +218,9 @@ function SourcesStep({
                 onChange={(event) => toggle(source.id, event.target.checked)}
               />
               <span className="min-w-0 flex-1 truncate">{source.title}</span>
-              <span className="text-xs text-muted-foreground uppercase">{source.kind}</span>
+              <span className="shrink-0 text-xs text-muted-foreground uppercase">
+                {source.kind}
+              </span>
             </label>
           </li>
         ))}
