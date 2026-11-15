@@ -1,0 +1,47 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise", "node", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "env": {
+    "es2024": true,
+    "node": true
+  },
+  "ignorePatterns": ["**/dist/**", "**/.next/**", "**/coverage/**", "**/next-env.d.ts"],
+  "rules": {
+    "typescript/no-explicit-any": "error",
+    "typescript/consistent-type-imports": "off",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "import/no-cycle": "error",
+    "import/no-unassigned-import": "off",
+    "unicorn/prefer-node-protocol": "error",
+    "eqeqeq": "error",
+    "no-console": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["apps/web/**"],
+      "plugins": [
+        "typescript",
+        "unicorn",
+        "oxc",
+        "import",
+        "promise",
+        "react",
+        "react-perf",
+        "jsx-a11y",
+        "nextjs"
+      ],
+      "env": { "browser": true }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "rules": { "no-console": "off" }
+    }
+  ]
+}
