@@ -5,6 +5,8 @@ export const ENV = Symbol('ENV');
 export const apiEnvSchema = z.object({
   SUPABASE_URL: z.url().transform((url) => url.replace(/\/+$/, '')),
   SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
+  /** Direct Postgres connection (session mode) for the pg-boss job queue. */
+  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//, 'must be a postgres:// connection string'),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   CORS_ORIGIN: z
     .string()

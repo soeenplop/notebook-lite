@@ -14,5 +14,5 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.user || !ctx.supabase) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Sign-in required' });
   }
-  return next({ ctx: { user: ctx.user, supabase: ctx.supabase } });
+  return next({ ctx: { user: ctx.user, supabase: ctx.supabase, jobs: ctx.jobs } });
 });

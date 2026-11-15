@@ -62,10 +62,15 @@ the `production` environment would work as well and take precedence.
 
 Set per application (*Environment* tab). Never put the Supabase secret key into `web`.
 
-- **api**: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `CORS_ORIGIN=https://notebook-lite.soeenplop.dev`,
-  `LOG_LEVEL=info`, optional `RATE_LIMIT_PER_MINUTE`.
-- **worker**: `LOG_LEVEL=info`. Later milestones add `DATABASE_URL`, `SUPABASE_SECRET_KEY`,
+- **api**: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`,
+  `CORS_ORIGIN=https://notebook-lite.soeenplop.dev`, `LOG_LEVEL=info`, optional `RATE_LIMIT_PER_MINUTE`.
+- **worker**: `DATABASE_URL`, `LOG_LEVEL=info`. Later milestones add `SUPABASE_SECRET_KEY`,
   OpenAI and ElevenLabs keys.
+
+`DATABASE_URL` (pg-boss) is the Supabase session-pooler connection string (port 5432; the
+direct connection is IPv6-only). Both apps fail at boot without it. pg-boss installs and
+migrates its own `pgboss` schema when the worker starts; that schema is not part of
+`supabase/migrations`.
 - **web**: build arguments (inlined into the browser bundle at build time)
   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
   `NEXT_PUBLIC_API_URL=https://notebook-lite-api.soeenplop.dev`. Changing them requires a rebuild.
