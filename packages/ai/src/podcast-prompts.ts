@@ -118,11 +118,42 @@ export function scriptSystemPrompt(brief: ScriptBrief): string {
   ].join('\n');
 }
 
-const HOOK_INSTRUCTION =
-  'Open with a hook taken from the excerpts: the most surprising fact, a striking contradiction or a question the listener wants answered. No generic greeting like "Today we talk about ...". Introduce the topic right after the hook.';
+/**
+ * How the episode opens and closes. Like a real podcast: a cold open, a short welcome and a
+ * preview at the start; takeaways and a brief farewell at the end. Hosts stay nameless and the
+ * show has no name, so the model must not invent either.
+ */
+function introInstruction(mode: PodcastMode): string {
+  const welcome =
+    mode === 'dialogue'
+      ? 'the hosts warmly welcome the listener and greet each other in a line or two'
+      : 'the host warmly welcomes the listener';
+  return [
+    'Open like a real podcast episode, in three short beats:',
+    '1. Cold open: one to three sentences with a hook taken from the excerpts (the most surprising',
+    '   fact, a striking contradiction or a question the listener wants answered).',
+    `2. Welcome: ${welcome}, in a relaxed, friendly tone.`,
+    '3. Preview: one or two sentences on what this episode is about and why it is worth listening,',
+    '   ideally teasing a point that comes later, without giving it away.',
+    'Keep the whole opening to about 10 percent of the episode. Do not invent a show name or host',
+    'names, and avoid stiff phrases like "Today we talk about ...".',
+  ].join('\n');
+}
 
-const TAKEAWAY_INSTRUCTION =
-  'Close with one to three concrete takeaways or an open question to think about, not a recap of everything that was said.';
+function outroInstruction(mode: PodcastMode): string {
+  const farewell =
+    mode === 'dialogue'
+      ? 'the hosts react to each other one last time, briefly thank each other, then thank the listener and say goodbye together'
+      : 'the host thanks the listener for listening and says goodbye';
+  return [
+    'Close like a real podcast episode, in two short beats:',
+    '1. Takeaways: one to three concrete takeaways or an open question to think about, not a',
+    '   recap of everything that was said. A callback to the hook from the opening works well.',
+    `2. Farewell: ${farewell}, warm and natural, in a few sentences.`,
+    'Do not invent a show name or host names, do not ask listeners to subscribe or rate, and do',
+    'not announce future episodes.',
+  ].join('\n');
+}
 
 export function scriptUserPrompt(
   brief: ScriptBrief,
@@ -132,8 +163,8 @@ export function scriptUserPrompt(
   return [
     `Topic: ${brief.topic}`,
     `Length: about ${brief.targetMinutes} minutes, so about ${targetWords} words in total (stay within 10 percent).`,
-    HOOK_INSTRUCTION,
-    TAKEAWAY_INSTRUCTION,
+    introInstruction(brief.mode),
+    outroInstruction(brief.mode),
     'Also give the episode a short, catchy title (at most 10 words, no audio tags).',
     '',
     `Excerpts:\n\n${formatPodcastExcerpts(excerpts)}`,
@@ -150,10 +181,10 @@ export function outlineUserPrompt(
     `Topic: ${brief.topic}`,
     `Plan an episode of about ${brief.targetMinutes} minutes (about ${targetWords} words).`,
     `Return a short, catchy episode title and an outline of exactly ${sectionCount} sections in`,
-    'speaking order. Give the episode an arc: the first section opens with a hook (the most',
-    'surprising fact, a contradiction or a question from the excerpts), the middle sections build',
-    'up to the most interesting or contested point, the last one closes with concrete takeaways',
-    'or an open question. For each section give a heading and the key points from the excerpts',
+    'speaking order. Give the episode an arc: the first section opens like a podcast (a hook from',
+    'the excerpts, a short welcome and a preview of the episode), the middle sections build up to',
+    'the most interesting or contested point, the last one closes with concrete takeaways or an',
+    'open question and a short farewell. For each section give a heading and the key points from the excerpts',
     'it covers. Do not repeat points across sections. Do not write the script yet.',
     '',
     `Excerpts:\n\n${formatPodcastExcerpts(excerpts)}`,
@@ -179,9 +210,9 @@ export function sectionUserPrompt(input: {
   if (!section) throw new Error(`outline has no section ${index}`);
   const position =
     index === 0
-      ? `This is the first section. ${HOOK_INSTRUCTION}`
+      ? `This is the first section.\n${introInstruction(brief.mode)}`
       : index === outline.length - 1
-        ? `This is the last section: continue seamlessly. ${TAKEAWAY_INSTRUCTION}`
+        ? `This is the last section: continue seamlessly, without a new welcome.\n${outroInstruction(brief.mode)}`
         : 'This is a middle section: continue seamlessly, without greeting or wrapping up.';
   const previous = input.previous.length
     ? input.previous.map((segment) => `${segment.speaker}: ${segment.text}`).join('\n')
