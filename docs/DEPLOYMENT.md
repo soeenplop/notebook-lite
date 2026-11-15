@@ -13,6 +13,11 @@ environment **production**). The database, auth and storage live in Supabase Clo
 All three build from this public repository (`git` source, branch `main`, Docker context `.`).
 Traefik (managed by Dokploy) terminates TLS with Let's Encrypt certificates.
 
+**Auto Deploy is switched off** on all three apps (Dokploy → app → *General* → *Autodeploy*), and
+the repository has no Dokploy webhook. Dokploy enables Auto Deploy by default for new apps, so
+turn it off again if an app is ever recreated. Otherwise a push would start a deploy that races
+the migrations. Only the deploy workflow (or a manual click in Dokploy) deploys.
+
 ## Release flow
 
 Every push to `main` deploys, but only after CI passed (`.github/workflows/deploy.yml`):
@@ -22,7 +27,7 @@ Every push to `main` deploys, but only after CI passed (`.github/workflows/deplo
 2. **Migrations**: `supabase db push --remote` applies new files from `supabase/migrations/`,
    then the pgTAP RLS tests run against the live project (each in a rolled-back transaction).
 3. **Deploy**: the workflow triggers a Dokploy deployment for api, worker and web.
-   Dokploy auto-deploy is not used, so the apps never run ahead of the schema.
+   Dokploy Auto Deploy is off (see above), so the apps never run ahead of the schema.
 4. **Smoke**: waits for `https://notebook-api.soeenplop.dev/healthz` and the web login page,
    then runs the Playwright smoke tests against production.
 
