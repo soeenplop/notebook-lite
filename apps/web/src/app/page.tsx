@@ -1,4 +1,13 @@
+import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
+import { createClient } from '@/lib/supabase/server';
+
+async function CurrentUser() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const email = typeof data?.claims.email === 'string' ? data.claims.email : 'unknown user';
+  return <p className="text-sm text-muted-foreground">Signed in as {email}</p>;
+}
 
 export default function Home() {
   return (
@@ -7,7 +16,14 @@ export default function Home() {
       <p className="text-muted-foreground">
         Collect sources in notebooks, chat with them, and turn them into podcasts.
       </p>
-      <Button disabled>Sign in (coming soon)</Button>
+      <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
+        <CurrentUser />
+      </Suspense>
+      <form action="/auth/sign-out" method="post">
+        <Button type="submit" variant="outline">
+          Sign out
+        </Button>
+      </form>
     </main>
   );
 }
