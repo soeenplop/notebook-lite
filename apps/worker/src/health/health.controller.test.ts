@@ -5,6 +5,7 @@ import { healthResponseSchema } from '@notebook-lite/shared';
 import request from 'supertest';
 import { JobQueue } from '@notebook-lite/queue';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { testEnv } from '../testing/fixtures.js';
 import { WorkerModule } from '../worker.module.js';
 
 const fakeQueue = {
@@ -18,13 +19,7 @@ describe('GET /healthz', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [
-        WorkerModule.forRoot({
-          WORKER_PORT: 0,
-          LOG_LEVEL: 'info',
-          DATABASE_URL: 'postgres://test',
-        }),
-      ],
+      imports: [WorkerModule.forRoot(testEnv)],
     })
       .overrideProvider(JobQueue)
       .useValue(fakeQueue)
