@@ -21,13 +21,15 @@
     "db:push": "supabase db push --remote",
     "db:test": "supabase test db --remote",
     "db:config": "supabase config push",
-    "db:types": "supabase gen types --lang typescript --remote --schema public > packages/db/src/database.types.ts && prettier --write packages/db/src/database.types.ts"
+    "db:types": "supabase gen types --lang typescript --remote --schema public > packages/db/src/database.types.ts && prettier --write packages/db/src/database.types.ts",
+    "test:e2e": "npm run test:e2e -w @notebook-lite/web"
   },
   "devDependencies": {
     "@types/node": "26.6.6",
     "concurrently": "10.0.7",
     "oxlint": "1.93.0",
     "oxlint-tsgolint": "7.0.2007",
+    "pino-pretty": "13.2.0",
     "prettier": "3.10.1",
     "supabase": "3.1.0",
     "typescript": "7.0.2",

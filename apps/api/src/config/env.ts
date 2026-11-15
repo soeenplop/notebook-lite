@@ -17,6 +17,8 @@ export const apiEnvSchema = z.object({
     )
     .pipe(z.array(z.url()).min(1)),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
+  /** Requests per minute and client IP across the whole API. */
+  RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(300),
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

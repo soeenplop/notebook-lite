@@ -1,0 +1,124 @@
+name: Deploy
+
+# Production deploy for every push to main, after CI passed:
+#   1. apply Supabase migrations and run the RLS tests against the live project
+#   2. trigger the Dokploy deployments (api, worker, web)
+#   3. wait for the public health checks and run the smoke tests against production
+# Ordering is enforced here: Dokploy auto-deploy is off, so apps never run ahead of the schema.
+# Setup (secrets, variables, Dokploy apps): docs/DEPLOYMENT.md
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Supabase migrations
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Link project
+        run: npx supabase link --project-ref "$SUPABASE_PROJECT_REF" --yes
+
+      - name: Pending migrations
+        run: npx supabase db push --remote --dry-run
+
+      - name: Apply migrations
+        run: npx supabase db push --remote --yes
+
+      - name: RLS tests
+        run: npx supabase test db --remote --yes
+
+  deploy:
+    name: Dokploy deploy
+    needs: migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      DOKPLOY_URL: ${{ vars.DOKPLOY_URL }}
+      DOKPLOY_AUTH_TOKEN: ${{ secrets.DOKPLOY_AUTH_TOKEN }}
+    strategy:
+      matrix:
+        include:
+          - app: api
+            id_var: DOKPLOY_APP_ID_API
+          - app: worker
+            id_var: DOKPLOY_APP_ID_WORKER
+          - app: web
+            id_var: DOKPLOY_APP_ID_WEB
+    steps:
+      - name: Deploy ${{ matrix.app }}
+        env:
+          APPLICATION_ID: ${{ vars[matrix.id_var] }}
+          TITLE: ${{ github.event.workflow_run.head_commit.message || github.sha }}
+        run: |
+          npx -y @dokploy/cli@0.30.7 application deploy \
+            --applicationId "$APPLICATION_ID" \
+            --title "$(printf '%s' "$TITLE" | head -n1 | cut -c1-80)"
+
+  smoke:
+    name: Production smoke test
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      WEB_URL: ${{ vars.WEB_URL }}
+      API_URL: ${{ vars.API_URL }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Wait for health checks
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -fsS "$API_URL/healthz" > /dev/null && curl -fsS "$WEB_URL/login" > /dev/null; then
+              echo "Healthy after $attempt attempt(s)"; exit 0
+            fi
+            sleep 10
+          done
+          echo "Services did not become healthy in time" >&2; exit 1
+
+      - run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Smoke tests against production
+        run: npm run test:e2e
+        env:
+          E2E_BASE_URL: ${{ vars.WEB_URL }}

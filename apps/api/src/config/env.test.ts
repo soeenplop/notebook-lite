@@ -11,14 +11,15 @@ describe('loadEnv', () => {
     const env = loadEnv({
       ...supabase,
       SUPABASE_URL: 'https://ref.supabase.co/',
-      CORS_ORIGIN: 'http://localhost:3000, https://notebook.soeenplop.dev',
+      CORS_ORIGIN: 'http://localhost:3000, https://notebook-lite.soeenplop.dev',
     });
     expect(env).toEqual({
       SUPABASE_URL: 'https://ref.supabase.co',
       SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_x',
       API_PORT: 4000,
-      CORS_ORIGIN: ['http://localhost:3000', 'https://notebook.soeenplop.dev'],
+      CORS_ORIGIN: ['http://localhost:3000', 'https://notebook-lite.soeenplop.dev'],
       LOG_LEVEL: 'info',
+      RATE_LIMIT_PER_MINUTE: 300,
     });
   });
 

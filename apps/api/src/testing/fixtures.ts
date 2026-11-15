@@ -10,6 +10,7 @@ export const testEnv: ApiEnv = {
   API_PORT: 0,
   CORS_ORIGIN: ['http://localhost:3000'],
   LOG_LEVEL: 'info',
+  RATE_LIMIT_PER_MINUTE: 1000,
 };
 
 export interface TestKeys {
