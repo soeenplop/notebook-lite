@@ -15,7 +15,8 @@
     "**/.next/**",
     "**/coverage/**",
     "**/next-env.d.ts",
-    "apps/web/src/components/ui/**"
+    "apps/web/src/components/ui/**",
+    "packages/db/src/database.types.ts"
   ],
   "rules": {
     "typescript/no-explicit-any": "error",
