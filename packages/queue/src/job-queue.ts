@@ -1,13 +1,31 @@
 import { type JobData, parseJobData, QUEUE_NAMES, type QueueName } from '@notebook-lite/shared';
-import { type Job, PgBoss, type QueueOptions, type SendOptions } from 'pg-boss';
+import {
+  type Job,
+  PgBoss,
+  type QueueOptions,
+  type SendOptions,
+  type UpdateQueueOptions,
+} from 'pg-boss';
 
-/** Retry and expiry policy per queue. Applied when a queue is created. */
-export const QUEUE_SETTINGS: Record<QueueName, QueueOptions> = {
+/**
+ * Seconds without a heartbeat after which an active job counts as abandoned (its worker crashed
+ * or was replaced by a deploy) and is retried. pg-boss refreshes the heartbeat while the handler
+ * runs; the supervisor checks every 60 s. Without it, an abandoned job waits for
+ * `expireInSeconds`.
+ */
+export const HEARTBEAT_SECONDS = 30;
+
+/**
+ * Retry, expiry and heartbeat policy per queue. Applied on every start, so changes reach
+ * queues that already exist.
+ */
+export const QUEUE_SETTINGS: Record<QueueName, QueueOptions & UpdateQueueOptions> = {
   'ingest-source': {
     retryLimit: 3,
     retryDelay: 30,
     retryBackoff: true,
     expireInSeconds: 15 * 60,
+    heartbeatSeconds: HEARTBEAT_SECONDS,
     deleteAfterSeconds: 7 * 24 * 60 * 60,
   },
   'generate-podcast': {
@@ -15,6 +33,7 @@ export const QUEUE_SETTINGS: Record<QueueName, QueueOptions> = {
     retryDelay: 60,
     retryBackoff: true,
     expireInSeconds: 60 * 60,
+    heartbeatSeconds: HEARTBEAT_SECONDS,
     deleteAfterSeconds: 7 * 24 * 60 * 60,
   },
 };
@@ -41,6 +60,7 @@ export interface QueueBackend {
   stop(options: { graceful: boolean; timeout: number }): Promise<void>;
   getQueue(name: string): Promise<unknown>;
   createQueue(name: string, options: QueueOptions): Promise<void>;
+  updateQueue(name: string, options: UpdateQueueOptions): Promise<void>;
   send(name: string, data: object, options: SendOptions): Promise<string | null>;
   work(
     name: string,
@@ -89,13 +109,17 @@ export class JobQueue {
       stop: (options) => boss.stop(options),
       getQueue: (name) => boss.getQueue(name),
       createQueue: (name, options) => boss.createQueue(name, options),
+      updateQueue: (name, options) => boss.updateQueue(name, options),
       send: (name, data, options) => boss.send(name, data, options),
       work: (name, options, handler) => boss.work(name, options, handler),
       cancel: (name, id) => boss.cancel(name, id),
     });
   }
 
-  /** Connects, installs/migrates the pg-boss schema and creates missing queues. Idempotent. */
+  /**
+   * Connects, installs/migrates the pg-boss schema, creates missing queues and applies
+   * `QUEUE_SETTINGS` to existing ones. Idempotent.
+   */
   start(): Promise<void> {
     this.#started ??= this.#startOnce().catch((error: unknown) => {
       this.#started = undefined;
@@ -109,16 +133,22 @@ export class JobQueue {
     for (const name of QUEUE_NAMES) {
       // Sequential: a handful of queues, once at startup.
       // oxlint-disable-next-line no-await-in-loop
-      if (!(await this.#backend.getQueue(name))) {
-        try {
-          // oxlint-disable-next-line no-await-in-loop
-          await this.#backend.createQueue(name, QUEUE_SETTINGS[name]);
-        } catch (error) {
-          // Another process (api or worker) may have created it in the meantime.
-          // oxlint-disable-next-line no-await-in-loop
-          if (!(await this.#backend.getQueue(name))) throw error;
-        }
-      }
+      await this.#ensureQueue(name);
+    }
+  }
+
+  async #ensureQueue(name: QueueName): Promise<void> {
+    const settings = QUEUE_SETTINGS[name];
+    if (await this.#backend.getQueue(name)) {
+      await this.#backend.updateQueue(name, settings);
+      return;
+    }
+    try {
+      await this.#backend.createQueue(name, settings);
+    } catch (error) {
+      // Another process (api or worker) may have created it in the meantime.
+      if (!(await this.#backend.getQueue(name))) throw error;
+      await this.#backend.updateQueue(name, settings);
     }
   }
 

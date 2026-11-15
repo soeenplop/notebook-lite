@@ -21,6 +21,7 @@ function fakeBackend(existingQueues: string[] = []) {
       queues.add(name);
       return Promise.resolve();
     }),
+    updateQueue: vi.fn<QueueBackend['updateQueue']>(() => Promise.resolve()),
     send: vi.fn<QueueBackend['send']>(() => Promise.resolve('job-1')),
     work: vi.fn<QueueBackend['work']>((_name, _options, h) => {
       handler = h;
@@ -42,7 +43,7 @@ function fakeBackend(existingQueues: string[] = []) {
 }
 
 describe('JobQueue', () => {
-  it('creates missing queues once with their settings', async () => {
+  it('creates missing queues and updates existing ones, once', async () => {
     const { backend } = fakeBackend(['ingest-source']);
     const queue = new JobQueue(backend);
 
@@ -53,6 +54,32 @@ describe('JobQueue', () => {
       'generate-podcast',
       QUEUE_SETTINGS['generate-podcast'],
     );
+    expect(backend.updateQueue).toHaveBeenCalledExactlyOnceWith(
+      'ingest-source',
+      QUEUE_SETTINGS['ingest-source'],
+    );
+  });
+
+  it('updates a queue another process created concurrently', async () => {
+    const { backend } = fakeBackend(['ingest-source', 'generate-podcast']);
+    // generate-podcast: missing on the first look, then created by another process.
+    backend.getQueue.mockResolvedValueOnce({ name: 'ingest-source' }).mockResolvedValueOnce(null);
+    backend.createQueue.mockRejectedValueOnce(new Error('duplicate key'));
+    const queue = new JobQueue(backend);
+
+    await queue.start();
+
+    expect(backend.updateQueue).toHaveBeenCalledWith(
+      'generate-podcast',
+      QUEUE_SETTINGS['generate-podcast'],
+    );
+  });
+
+  it('gives every queue a heartbeat so abandoned jobs are retried promptly', () => {
+    for (const settings of Object.values(QUEUE_SETTINGS)) {
+      expect(settings.heartbeatSeconds).toBeGreaterThanOrEqual(10);
+      expect(settings.heartbeatSeconds).toBeLessThan(settings.expireInSeconds ?? Infinity);
+    }
   });
 
   it('retries start after a failed connection', async () => {
