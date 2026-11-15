@@ -1,12 +1,14 @@
 import { createLocalJWKSet, exportJWK, generateKeyPair, type JWTPayload, SignJWT } from 'jose';
 import type { ApiEnv } from '../config/env.js';
 import type { Jwks } from '../auth/jwks.js';
+import type { JobSender } from '../trpc/context.js';
 
 export const TEST_SUPABASE_URL = 'https://test-project.supabase.co';
 
 export const testEnv: ApiEnv = {
   SUPABASE_URL: TEST_SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
+  DATABASE_URL: 'postgres://test:test@127.0.0.1:5432/test',
   API_PORT: 0,
   CORS_ORIGIN: ['http://localhost:3000'],
   LOG_LEVEL: 'info',
@@ -40,5 +42,17 @@ export async function createTestKeys(): Promise<TestKeys> {
         .setIssuedAt()
         .setExpirationTime(options.expiresIn ?? '1h')
         .sign(privateKey),
+  };
+}
+
+/** Job sender that records instead of enqueueing. */
+export function fakeJobs(): JobSender & { sent: { name: string; data: unknown }[] } {
+  const sent: { name: string; data: unknown }[] = [];
+  return {
+    sent,
+    send: (name, data) => {
+      sent.push({ name, data });
+      return Promise.resolve(`job-${sent.length}`);
+    },
   };
 }

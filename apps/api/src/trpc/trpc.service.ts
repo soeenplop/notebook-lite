@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
+import { JobQueue } from '@notebook-lite/queue';
 import { AuthService } from '../auth/auth.service.js';
 import { UnauthorizedError } from '../auth/auth.types.js';
 import { SupabaseService } from '../supabase/supabase.service.js';
@@ -14,6 +15,7 @@ export class TrpcService {
   constructor(
     private readonly auth: AuthService,
     private readonly supabase: SupabaseService,
+    private readonly queue: JobQueue,
   ) {}
 
   /** Express middleware serving the tRPC router (mounted at /trpc). */
@@ -23,7 +25,11 @@ export class TrpcService {
       createContext: async ({ req }): Promise<TrpcContext> => {
         try {
           const user = await this.auth.authenticate(req.headers.authorization);
-          return { user, supabase: user ? this.supabase.forUser(user.accessToken) : null };
+          return {
+            user,
+            supabase: user ? this.supabase.forUser(user.accessToken) : null,
+            jobs: this.queue,
+          };
         } catch (error) {
           if (error instanceof UnauthorizedError) {
             throw new TRPCError({ code: 'UNAUTHORIZED', message: error.message });

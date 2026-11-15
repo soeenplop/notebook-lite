@@ -10,8 +10,8 @@
     "apps/*"
   ],
   "scripts": {
-    "build:packages": "npm run build -w @notebook-lite/shared -w @notebook-lite/db -w @notebook-lite/ai",
-    "dev": "npm run build:packages && concurrently -k -n shared,db,ai,api,worker,web -c gray,gray,gray,blue,magenta,green \"npm run dev -w @notebook-lite/shared\" \"npm run dev -w @notebook-lite/db\" \"npm run dev -w @notebook-lite/ai\" \"npm run dev -w @notebook-lite/api\" \"npm run dev -w @notebook-lite/worker\" \"npm run dev -w @notebook-lite/web\"",
+    "build:packages": "npm run build -w @notebook-lite/shared -w @notebook-lite/db -w @notebook-lite/ai -w @notebook-lite/queue",
+    "dev": "npm run build:packages && concurrently -k -n shared,db,ai,queue,api,worker,web -c gray,gray,gray,gray,blue,magenta,green \"npm run dev -w @notebook-lite/shared\" \"npm run dev -w @notebook-lite/db\" \"npm run dev -w @notebook-lite/ai\" \"npm run dev -w @notebook-lite/queue\" \"npm run dev -w @notebook-lite/api\" \"npm run dev -w @notebook-lite/worker\" \"npm run dev -w @notebook-lite/web\"",
     "lint": "oxlint --type-aware --deny-warnings && prettier --check .",
     "format": "oxlint --type-aware --fix && prettier --write .",
     "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",

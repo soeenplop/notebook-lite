@@ -65,6 +65,7 @@ notebook-lite/
 │  ├─ shared/         zod schemas, types, constants, citation utils
 │  ├─ db/             generated Supabase types, typed query helpers, retrieval SQL
 │  ├─ ai/             prompts, model config, chunking, embedding, script generation
+│  ├─ queue/          typed pg-boss wrapper (JobQueue) used by api and worker
 │  └─ config/         shared tsconfig presets (oxlint + Prettier config in repo root)
 ├─ supabase/
 │  ├─ migrations/     SQL migrations (schema, RLS, storage policies, functions)
