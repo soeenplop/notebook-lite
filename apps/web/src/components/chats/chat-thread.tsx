@@ -122,7 +122,12 @@ export function ChatThread({
           </div>
         )}
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} onSelectCitation={onSelectCitation} />
+          <MessageBubble
+            key={message.id}
+            message={message}
+            streaming={status === 'streaming' && message.id === lastMessage?.id}
+            onSelectCitation={onSelectCitation}
+          />
         ))}
         {waitingForText && (
           <p className="animate-pulse text-sm text-muted-foreground">Searching your sources…</p>
@@ -182,12 +187,16 @@ export function ChatThread({
 
 function MessageBubble({
   message,
+  streaming,
   onSelectCitation,
 }: {
   message: ChatUIMessage;
+  /** True while this answer is still streaming in. */
+  streaming: boolean;
   onSelectCitation: (citation: Citation) => void;
 }) {
   const text = messageText(message);
+  const citations = useMemo(() => messageCitations(message), [message]);
   if (message.role === 'user') {
     return (
       <div className="ml-auto max-w-[85%] rounded-2xl bg-muted px-4 py-2 text-sm whitespace-pre-wrap">
@@ -198,7 +207,12 @@ function MessageBubble({
   if (!text) return null;
   return (
     <div className={cn('max-w-full')}>
-      <CitationText text={text} citations={messageCitations(message)} onSelect={onSelectCitation} />
+      <CitationText
+        text={text}
+        citations={citations}
+        isAnimating={streaming}
+        onSelect={onSelectCitation}
+      />
     </div>
   );
 }
