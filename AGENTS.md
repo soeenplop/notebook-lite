@@ -28,9 +28,10 @@ npm run format       # oxlint --fix + prettier --write
 npm run typecheck
 npm run test
 npm run build
-# from M1:
-npm run db:start     # local Supabase
-npm run db:reset     # re-apply migrations + seed
+npm run db:new -- <name>  # new migration file
+npm run db:push      # apply migrations to the remote project
+npm run db:test      # pgTAP RLS tests against the remote project (rolled back)
+npm run db:config    # push auth config + email templates (supabase/config.toml)
 npm run db:types     # regenerate packages/db types after schema changes
 ```
 
@@ -43,7 +44,7 @@ npm run db:types     # regenerate packages/db types after schema changes
 
 - LLM: OpenAI `gpt-6.1-terra` via Vercel AI SDK; embeddings `text-embedding-3-large` stored as `halfvec(3072)`.
 - Supabase: Postgres + pgvector, Storage (private buckets `sources`, `podcasts`, path `{user_id}/{notebook_id}/…`), Auth via email OTP.
-- Supabase Cloud (prod); local Supabase CLI stack for development.
+- Supabase Cloud only, no local stack: project `notebook-lite` (ref `tmwmklntjantjchkhmrg`) serves dev and prod. The CLI is linked; `db:push` changes the live database, so test migrations carefully. JWTs are ES256, verified via JWKS.
 - Notebook languages: `de`, `en`.
 - TTS: ElevenLabs text-to-dialogue endpoint (also for monologues), batched; ffmpeg joins the batches in the worker.
 - Deploy: Dokploy project at `dokploy.soeenplop.dev`, auto-deploy on push to `main`. Dokploy CLI available. Web: `notebook.soeenplop.dev`, API: `notebook-api.soeenplop.dev`.

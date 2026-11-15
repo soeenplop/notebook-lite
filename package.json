@@ -16,7 +16,11 @@
     "format": "oxlint --type-aware --fix && prettier --write .",
     "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",
     "test": "npm run build:packages && npm run test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "db:new": "supabase migration new",
+    "db:push": "supabase db push --remote",
+    "db:test": "supabase test db --remote",
+    "db:config": "supabase config push"
   },
   "devDependencies": {
     "@types/node": "26.6.6",
@@ -24,6 +28,7 @@
     "oxlint": "1.93.0",
     "oxlint-tsgolint": "7.0.2007",
     "prettier": "3.10.1",
+    "supabase": "3.1.0",
     "typescript": "7.0.2",
     "vitest": "5.1.0"
   }
