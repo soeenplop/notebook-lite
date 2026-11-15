@@ -24,8 +24,6 @@ export const workerEnvSchema = z.object({
    */
   ELEVENLABS_API_KEY: optionalString,
   ELEVENLABS_MODEL_ID: z.string().trim().min(1).default('eleven_v3'),
-  ELEVENLABS_VOICE_A: optionalString,
-  ELEVENLABS_VOICE_B: optionalString,
   ELEVENLABS_BASE_URL: z
     .url()
     .default('https://api.elevenlabs.io')
@@ -44,13 +42,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): WorkerEnv {
 }
 
 /**
- * What is missing for podcast audio, as one message (null when complete). Voice B is only
- * needed for dialogues and is checked per job.
+ * What is missing for podcast audio, as one message (null when complete). Voices are fixed per
+ * language in `SUPPORTED_LANGUAGES`.
  */
 export function missingPodcastConfig(env: WorkerEnv): string | null {
-  const missing = [
-    env.ELEVENLABS_API_KEY ? null : 'ELEVENLABS_API_KEY',
-    env.ELEVENLABS_VOICE_A ? null : 'ELEVENLABS_VOICE_A',
-  ].filter(Boolean);
-  return missing.length ? `missing ${missing.join(', ')}` : null;
+  return env.ELEVENLABS_API_KEY ? null : 'missing ELEVENLABS_API_KEY';
 }

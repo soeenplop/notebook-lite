@@ -12,7 +12,5 @@ export const testEnv: WorkerEnv = {
   OPENAI_EMBEDDING_MODEL: 'text-embedding-3-large',
   ELEVENLABS_API_KEY: 'xi-test',
   ELEVENLABS_MODEL_ID: 'eleven_v3',
-  ELEVENLABS_VOICE_A: 'fake-voice-a',
-  ELEVENLABS_VOICE_B: 'fake-voice-b',
   ELEVENLABS_BASE_URL: 'https://elevenlabs.test',
 };

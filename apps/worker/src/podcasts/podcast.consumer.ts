@@ -34,7 +34,6 @@ export const podcastPipelineProvider: Provider = {
           })
         : null,
       configError,
-      voices: { A: env.ELEVENLABS_VOICE_A, B: env.ELEVENLABS_VOICE_B },
       audio: new FfmpegAudio(),
       logger: new Logger('PodcastPipeline'),
       retryLimit: QUEUE_SETTINGS['generate-podcast'].retryLimit ?? 0,
@@ -59,8 +58,6 @@ export class PodcastConsumer implements OnApplicationBootstrap {
       this.logger.warn(
         `Podcast audio is not configured (${missing}); podcast jobs will fail until it is set`,
       );
-    } else if (!this.env.ELEVENLABS_VOICE_B) {
-      this.logger.warn('ELEVENLABS_VOICE_B is not set; dialogue podcasts will fail');
     }
     await this.queue.work('generate-podcast', (data, job) =>
       this.pipeline.run(data, { retryCount: job.retryCount, signal: job.signal }),

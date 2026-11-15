@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import type { LanguageModelV4GenerateResult } from '@ai-sdk/provider';
 import { EMBEDDING_DIMENSIONS } from '@notebook-lite/ai';
+import { getLanguage } from '@notebook-lite/shared';
 import { MockEmbeddingModelV4, MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, it } from 'vitest';
 import { fakeServiceDb, type FakeState } from '../testing/fake-service-db.js';
@@ -138,7 +139,6 @@ function setup(
     models: { chat, embedding: embeddingModel() },
     tts,
     configError: null,
-    voices: { A: 'fake-voice-a', B: 'fake-voice-b' },
     audio: fakeAudio,
     logger: {
       log: (message) => logs.push(message),
@@ -188,10 +188,11 @@ describe('PodcastPipeline', () => {
       p_match_count: 30,
     });
 
-    // two batches below the 2,000 character limit, both in the podcast language
+    // two batches below the 2,000 character limit, both in the podcast language and its voices
+    const voices = getLanguage('de').podcastVoices;
     expect(tts.requests.map((request) => request.inputs.map((input) => input.voice_id))).toEqual([
-      ['fake-voice-a', 'fake-voice-b'],
-      ['fake-voice-a'],
+      [voices.A, voices.B],
+      [voices.A],
     ]);
     expect(tts.requests.every((request) => request.languageCode === 'de')).toBe(true);
 
@@ -272,21 +273,17 @@ describe('PodcastPipeline', () => {
     expect(logs.join('\n')).toContain('not configured');
   });
 
-  it('needs voice B for dialogues but not for monologues', async () => {
-    const dialogue = setup({ deps: { voices: { A: 'fake-voice-a', B: undefined } } });
-    await dialogue.pipeline.run(job, run(0));
-    expect(dialogue.podcast()).toMatchObject({ status: 'failed', error: MESSAGES.notConfigured });
-
+  it('speaks monologues with voice A of the podcast language', async () => {
     const monologue = setup({
-      state: initialState(podcastRow({ mode: 'monologue' })),
-      deps: { voices: { A: 'fake-voice-a', B: undefined } },
-      chat: chatModel({ title: 'Solo', segments: [{ speaker: 'A', text: 'Hallo zusammen.' }] }),
+      state: initialState(podcastRow({ mode: 'monologue', language: 'en' })),
+      chat: chatModel({ title: 'Solo', segments: [{ speaker: 'A', text: 'Hello everyone.' }] }),
     });
     await monologue.pipeline.run(job, run(0));
     expect(monologue.podcast()?.status).toBe('ready');
-    expect(monologue.tts.requests[0]?.inputs).toEqual([
-      { text: 'Hallo zusammen.', voice_id: 'fake-voice-a' },
-    ]);
+    expect(monologue.tts.requests[0]).toMatchObject({
+      inputs: [{ text: 'Hello everyone.', voice_id: getLanguage('en').podcastVoices.A }],
+      languageCode: 'en',
+    });
   });
 
   it('fails when the sources have no matching text', async () => {
