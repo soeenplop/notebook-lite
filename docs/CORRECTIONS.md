@@ -6,6 +6,21 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-16 — Chunking: embedding context, smaller chunks
+
+- **Scope:** Ingestion (`packages/ai` chunker and embedding input), chat retrieval (`RETRIEVAL_MATCH_COUNT`), `docs/IMPLEMENTATION_PLAN.md` §5.3.
+- **Original decision:**
+  - Chunks were ~800 tokens (max 1000, overlap 120). Only the chunk content was embedded.
+  - The chat retrieved 12 candidates.
+  - When this was planned, the sentence splitter was also supposed to get the notebook language.
+- **Correction:**
+  - The embedding input carries a header with the source title and heading path.
+  - Chunks are ~450 tokens (max 600, overlap 70), and a tiny final chunk merges into the previous one. The chat retrieves 20 candidates, and the per-source cap grows to 9000 chunks.
+  - **Not** passing the notebook language to `Intl.Segmenter`: sentences cut at abbreviations ("Dr.", "z. B.", "e.g.") are joined again instead.
+- **Rationale:**
+  - Large chunks mixed several topics in one vector, and passages that only make sense within their section were hard to find. Smaller chunks with a context header keep each vector on one topic.
+  - The locale was a no-op: V8's ICU sentence segmenter splits identically for `de`, `en` and no locale, and it has no abbreviation handling. The actual defect was the abbreviation splits.
+
 ## 2026-11-16 — Podcast topic suggestions: smaller sample, low reasoning effort, streamed
 
 - **Scope:** Podcast topic suggestions (`podcasts.suggestTopics`, `packages/ai` `streamPodcastTopics`, the wizard's topic step).

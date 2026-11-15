@@ -265,7 +265,7 @@ describe('POST /chat/:chatId/stream', () => {
       p_notebook_id: notebookId,
       p_query_text: 'Wann siedet Wasser?',
       p_source_ids: [sourceA],
-      p_match_count: 12,
+      p_match_count: 20,
     });
     expect(String(rpcArgs.p_query_embedding)).toMatch(/^\[0\.5,0\.5,/);
 
