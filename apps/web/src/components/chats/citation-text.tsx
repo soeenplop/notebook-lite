@@ -2,30 +2,14 @@
 
 import type { Citation } from '@notebook-lite/shared';
 import { type ComponentProps, createContext, use, useMemo } from 'react';
-import {
-  type Components,
-  defaultRehypePlugins,
-  Streamdown,
-  type StreamdownProps,
-} from 'streamdown';
+import { type Components, Streamdown, type StreamdownProps } from 'streamdown';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
   CITATION_ATTRIBUTE,
   parseCitationAttribute,
   rehypeCitations,
 } from '@/lib/rehype-citations';
-
-/**
- * Elements the answer may not render: images could load arbitrary URLs (data exfiltration). Links
- * go through Streamdown's confirmation dialog.
- */
-const DISALLOWED_ELEMENTS = ['img'];
-
-/**
- * Streamdown's rehype plugins without `raw`, so raw HTML in an answer is not rendered. The
- * sanitizer and the link/image hardening still run.
- */
-const { raw: _raw, ...SAFE_REHYPE_PLUGINS } = defaultRehypePlugins;
+import { DISALLOWED_ELEMENTS, HEADING_COMPONENTS, SAFE_REHYPE_PLUGINS } from './markdown';
 
 /** The answer's citations, read by the citation spans (keeps the markdown components stable). */
 const CitationContext = createContext<{
@@ -51,19 +35,7 @@ function MarkdownSpan({ node: _node, ...props }: ComponentProps<'span'> & { node
 }
 
 /** Overrides of Streamdown's components: citation chips, and headings sized for a chat answer. */
-const MARKDOWN_COMPONENTS: Components = {
-  span: MarkdownSpan,
-  h1: ({ children }) => (
-    <h3 className="mt-4 mb-2 text-base font-semibold first:mt-0">{children}</h3>
-  ),
-  h2: ({ children }) => (
-    <h3 className="mt-4 mb-2 text-base font-semibold first:mt-0">{children}</h3>
-  ),
-  h3: ({ children }) => <h4 className="mt-3 mb-1.5 font-semibold first:mt-0">{children}</h4>,
-  h4: ({ children }) => <h5 className="mt-3 mb-1.5 font-semibold first:mt-0">{children}</h5>,
-  h5: ({ children }) => <h6 className="mt-3 mb-1.5 font-semibold first:mt-0">{children}</h6>,
-  h6: ({ children }) => <h6 className="mt-3 mb-1.5 font-semibold first:mt-0">{children}</h6>,
-};
+const MARKDOWN_COMPONENTS: Components = { ...HEADING_COMPONENTS, span: MarkdownSpan };
 
 /**
  * Answer text rendered as Markdown with Streamdown (memoized per block while streaming, see the AI
@@ -86,7 +58,7 @@ export function CitationText({
   const markerKey = [...citations.keys()].join(',');
   const rehypePlugins = useMemo<StreamdownProps['rehypePlugins']>(
     () => [
-      ...Object.values(SAFE_REHYPE_PLUGINS),
+      ...SAFE_REHYPE_PLUGINS,
       [rehypeCitations, new Set(markerKey ? markerKey.split(',').map(Number) : [])],
     ],
     [markerKey],
