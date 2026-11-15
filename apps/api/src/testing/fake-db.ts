@@ -3,6 +3,8 @@ import type { Db } from '../supabase/types.js';
 export interface FakeResult {
   data: unknown;
   error: { code: string; message: string } | null;
+  /** Row count for `select(…, { count: 'exact' })` queries. */
+  count?: number | null;
 }
 
 export interface RecordedQuery {
@@ -114,4 +116,38 @@ export function fakeDb(...results: FakeResult[]): {
   };
 
   return { db: client as unknown as Db, queries, storage, events };
+}
+
+export interface RecordedStorageCall {
+  bucket: string;
+  method: string;
+  args: unknown[];
+}
+
+/**
+ * Adds a fake `storage` to a fake client: every `storage.from(bucket).<method>(…)` call is
+ * recorded and resolves to the next queued result.
+ */
+export function withFakeStorage(
+  db: Db,
+  ...results: FakeResult[]
+): { db: Db; calls: RecordedStorageCall[] } {
+  const calls: RecordedStorageCall[] = [];
+  let next = 0;
+  const storage = {
+    from: (bucket: string) =>
+      new Proxy(
+        {},
+        {
+          get:
+            (_target, method) =>
+            (...args: unknown[]) => {
+              calls.push({ bucket, method: String(method), args });
+              return Promise.resolve(results[next++] ?? { data: null, error: null });
+            },
+        },
+      ),
+  };
+  Object.assign(db, { storage });
+  return { db, calls };
 }

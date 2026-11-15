@@ -17,6 +17,8 @@ export const SUPPORTED_LANGUAGES = {
     elevenLabsCode: 'de',
     /** Tesseract language for OCR of scanned PDF pages (tessdata file name). */
     ocrLanguage: 'deu',
+    /** ElevenLabs voice IDs: A hosts (and speaks monologues), B joins dialogues. */
+    podcastVoices: { A: 'gSZiss4v1BGsE1cTgoWF', B: 'cwXXmRbp4lGQdqLfbcKH' },
     wordsPerMinute: 130,
   },
   en: {
@@ -26,6 +28,7 @@ export const SUPPORTED_LANGUAGES = {
     ftsConfig: 'english',
     elevenLabsCode: 'en',
     ocrLanguage: 'eng',
+    podcastVoices: { A: 'T2sZgOl8ol4kf4u6yM2z', B: 'BAdH0bMfq6VleQGLXj38' },
     wordsPerMinute: 150,
   },
 } as const;

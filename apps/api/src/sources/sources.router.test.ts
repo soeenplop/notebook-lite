@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { describe, expect, it } from 'vitest';
 import type { AuthUser } from '../auth/auth.types.js';
 import { fakeDb, type FakeResult } from '../testing/fake-db.js';
-import { fakeJobs } from '../testing/fixtures.js';
+import { fakeJobs, testContext } from '../testing/fixtures.js';
 import { appRouter } from '../trpc/app-router.js';
 import type { JobSender } from '../trpc/context.js';
 
@@ -45,7 +45,10 @@ const source = {
 
 function callerWith(results: FakeResult[], jobs: JobSender = fakeJobs()) {
   const fake = fakeDb(...results);
-  return { caller: appRouter.createCaller({ user, supabase: fake.db, jobs }), ...fake };
+  return {
+    caller: appRouter.createCaller(testContext({ user, supabase: fake.db, jobs })),
+    ...fake,
+  };
 }
 
 async function trpcCode(promise: Promise<unknown>): Promise<string> {
@@ -60,7 +63,9 @@ async function trpcCode(promise: Promise<unknown>): Promise<string> {
 
 describe('sources router', () => {
   it('requires a session', async () => {
-    const caller = appRouter.createCaller({ user: null, supabase: null, jobs: fakeJobs() });
+    const caller = appRouter.createCaller(
+      testContext({ user: null, supabase: null, jobs: fakeJobs() }),
+    );
     expect(await trpcCode(caller.sources.list({ notebookId }))).toBe('UNAUTHORIZED');
   });
 

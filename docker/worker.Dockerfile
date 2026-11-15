@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 # NestJS background worker. Build context: repository root.
 #   docker build -f docker/worker.Dockerfile -t notebook-lite-worker .
-# The runtime includes Tesseract language data for OCR of scanned PDFs (LiteParse).
-# ffmpeg is added with the podcast pipeline (M5).
+# The runtime includes ffmpeg/ffprobe for joining podcast audio batches and Tesseract language
+# data for OCR of scanned PDFs (LiteParse).
 
 ARG NODE_IMAGE=node:26.13.0-slim
 
@@ -40,6 +40,10 @@ RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund -w @notebook-lite/wo
 
 # --- runtime -------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS runtime
+# ffmpeg concatenates and re-encodes the podcast MP3 batches; ffprobe measures the duration.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
 # Tesseract language data for LiteParse's OCR: one file per `ocrLanguage` in SUPPORTED_LANGUAGES
 # (packages/shared). The same tessdata_best files LiteParse would otherwise download at runtime.
 ADD --checksum=sha256:8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba \

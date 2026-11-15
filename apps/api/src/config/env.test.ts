@@ -24,6 +24,8 @@ describe('loadEnv', () => {
       LOG_LEVEL: 'info',
       RATE_LIMIT_PER_MINUTE: 300,
       CHAT_MESSAGES_PER_MINUTE: 10,
+      PODCAST_SUGGESTIONS_PER_HOUR: 20,
+      PODCASTS_PER_DAY: 10,
       OPENAI_API_KEY: 'sk-test',
       OPENAI_CHAT_MODEL: 'gpt-6.1-terra',
       OPENAI_EMBEDDING_MODEL: 'text-embedding-3-large',

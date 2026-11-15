@@ -24,6 +24,10 @@ export const apiEnvSchema = z.object({
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(300),
   /** Chat messages per minute and user (on top of the per-IP limit). */
   CHAT_MESSAGES_PER_MINUTE: z.coerce.number().int().min(1).default(10),
+  /** Podcast topic suggestions per user and hour (each is a synchronous LLM call). */
+  PODCAST_SUGGESTIONS_PER_HOUR: z.coerce.number().int().min(1).default(20),
+  /** Podcasts a user may create per day (on top of one in production at a time). */
+  PODCASTS_PER_DAY: z.coerce.number().int().min(1).default(10),
   // OpenAI: OPENAI_API_KEY, OPENAI_CHAT_MODEL, OPENAI_EMBEDDING_MODEL
   ...aiEnvSchema.shape,
 });

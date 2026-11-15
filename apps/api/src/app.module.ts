@@ -37,6 +37,7 @@ export class AppModule implements NestModule {
         SupabaseService,
         jobQueueProvider,
         JobQueueShutdown,
+        aiModelsProvider,
         TrpcService,
         aiModelsProvider,
         ChatStreamService,

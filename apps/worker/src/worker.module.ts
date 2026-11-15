@@ -7,6 +7,7 @@ import { IngestSourceConsumer } from './ingest/ingest-source.consumer.js';
 import { IngestSourceService } from './ingest/ingest-source.service.js';
 import { UrlFetcher } from './ingest/url-fetcher.js';
 import { loggerParams } from './logging.js';
+import { PodcastConsumer, podcastPipelineProvider } from './podcasts/podcast.consumer.js';
 import { JobQueueLifecycle, jobQueueProvider } from './queue/job-queue.provider.js';
 import { serviceDbProvider } from './supabase/service-db.js';
 
@@ -31,6 +32,8 @@ export class WorkerModule {
         { provide: UrlFetcher, useFactory: () => new UrlFetcher() },
         IngestSourceService,
         IngestSourceConsumer,
+        podcastPipelineProvider,
+        PodcastConsumer,
       ],
       exports: [ENV, jobQueueProvider, serviceDbProvider, aiModelsProvider],
     };

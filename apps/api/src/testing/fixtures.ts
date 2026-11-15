@@ -1,7 +1,11 @@
 import { createLocalJWKSet, exportJWK, generateKeyPair, type JWTPayload, SignJWT } from 'jose';
 import type { ApiEnv } from '../config/env.js';
 import type { Jwks } from '../auth/jwks.js';
-import type { JobSender } from '../trpc/context.js';
+import type { AiModels } from '@notebook-lite/ai';
+import type { Db } from '../supabase/types.js';
+import type { AuthUser } from '../auth/auth.types.js';
+import type { JobSender, TrpcContext } from '../trpc/context.js';
+import { MemoryUserRateLimiter } from '../trpc/user-rate-limiter.js';
 
 export const TEST_SUPABASE_URL = 'https://test-project.supabase.co';
 
@@ -14,6 +18,8 @@ export const testEnv: ApiEnv = {
   LOG_LEVEL: 'info',
   RATE_LIMIT_PER_MINUTE: 1000,
   CHAT_MESSAGES_PER_MINUTE: 100,
+  PODCAST_SUGGESTIONS_PER_HOUR: 20,
+  PODCASTS_PER_DAY: 10,
   OPENAI_API_KEY: 'sk-test',
   OPENAI_CHAT_MODEL: 'test-chat-model',
   OPENAI_EMBEDDING_MODEL: 'test-embedding-model',
@@ -58,5 +64,34 @@ export function fakeJobs(): JobSender & { sent: { name: string; data: unknown }[
       sent.push({ name, data });
       return Promise.resolve(`job-${sent.length}`);
     },
+  };
+}
+
+/** Models that fail if a test calls them unexpectedly. Override per test with mocks. */
+export const unusedAiModels: AiModels = {
+  chat: new Proxy({} as AiModels['chat'] & object, {
+    get: () => {
+      throw new Error('unexpected chat model use');
+    },
+  }),
+  embedding: new Proxy({} as AiModels['embedding'] & object, {
+    get: () => {
+      throw new Error('unexpected embedding model use');
+    },
+  }),
+};
+
+/** A tRPC context for `appRouter.createCaller`; anonymous unless `user` and `supabase` given. */
+export function testContext(
+  overrides: Partial<TrpcContext> & { user?: AuthUser | null; supabase?: Db | null } = {},
+): TrpcContext {
+  return {
+    user: null,
+    supabase: null,
+    jobs: fakeJobs(),
+    ai: unusedAiModels,
+    rateLimiter: new MemoryUserRateLimiter(),
+    limits: { podcastSuggestionsPerHour: 20, podcastsPerDay: 10 },
+    ...overrides,
   };
 }
