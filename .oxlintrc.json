@@ -11,6 +11,7 @@
     "node": true
   },
   "ignorePatterns": [
+    ".claude/**",
     "**/dist/**",
     "**/.next/**",
     "**/coverage/**",
