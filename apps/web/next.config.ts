@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import type { NextConfig } from 'next';
 
 // Local development: scripts/next.mjs loads the repo-root `.env` (see `.env.example`) and checks
@@ -22,6 +23,10 @@ const nextConfig: NextConfig = {
   headers() {
     return Promise.resolve([{ source: '/:path*', headers: SECURITY_HEADERS }]);
   },
+  // Self-contained server bundle for the Docker image (docker/web.Dockerfile). Tracing starts at
+  // the monorepo root so workspace packages are included.
+  output: 'standalone',
+  outputFileTracingRoot: fileURLToPath(new URL('../..', import.meta.url)),
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

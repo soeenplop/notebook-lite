@@ -43,3 +43,21 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_placeholder
           NEXT_PUBLIC_API_URL: http://localhost:4000
+
+  docker:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        app: [api, worker, web]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build ${{ matrix.app }} image
+        run: >-
+          docker build -f docker/${{ matrix.app }}.Dockerfile
+          --build-arg NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
+          --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_placeholder
+          --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
+          -t notebook-lite-${{ matrix.app }}:ci .
