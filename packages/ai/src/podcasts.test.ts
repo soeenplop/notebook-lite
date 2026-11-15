@@ -180,6 +180,49 @@ describe('generatePodcastScript', () => {
     });
     expect(script.title).toBe('Solar');
   });
+
+  it('keeps allowed audio tags in segments but not in the title', async () => {
+    const model = mockModel({
+      title: '[excited] Solar Boom',
+      segments: [
+        { speaker: 'A', text: '[Laughs] Really? [surprised] That fast?' },
+        { speaker: 'B', text: '[dramatic pause] Yes [1].' },
+        { speaker: 'A', text: '[sighs]' },
+      ],
+    });
+    const script = await generatePodcastScript(model, {
+      language: 'en',
+      mode: 'dialogue',
+      targetMinutes: 2,
+      topic: 'Solar',
+      excerpts,
+    });
+    expect(script).toEqual({
+      title: 'Solar Boom',
+      segments: [
+        { speaker: 'A', text: '[laughs] Really? That fast?' },
+        { speaker: 'B', text: 'Yes.' },
+      ],
+    });
+    expect(countScriptWords(script)).toBe(4);
+  });
+
+  it('asks for a hook, distinct hosts, audio tags and takeaways in the notebook language', async () => {
+    const model = mockModel({ title: 'T', segments: [{ speaker: 'A', text: 'Hi.' }] });
+    await generatePodcastScript(model, {
+      language: 'de',
+      mode: 'dialogue',
+      targetMinutes: 6,
+      topic: 'Solar',
+      excerpts,
+    });
+    const prompt = promptText(model.doGenerateCalls[0]);
+    expect(prompt).toContain('Open with a hook');
+    expect(prompt).toContain('takeaways');
+    expect(prompt).toContain('Host A is curious');
+    expect(prompt).toContain('[laughs]');
+    expect(prompt).toContain('ähm');
+  });
 });
 
 describe('cleanSpokenText', () => {
@@ -187,5 +230,13 @@ describe('cleanSpokenText', () => {
     expect(cleanSpokenText('B: This is *really* `big` [1][2-3].')).toBe('This is really big.');
     expect(cleanSpokenText('# Heading\n- item one\n- item two')).toBe('Heading item one item two');
     expect(cleanSpokenText('2 * 3 is 6')).toBe('2 * 3 is 6');
+  });
+
+  it('removes bracketed text and keeps only the first allowed audio tag on request', () => {
+    expect(cleanSpokenText('[laughs] Fair point [sic].')).toBe('Fair point.');
+    expect(cleanSpokenText('[laughs] Fair [curious] point.', { keepAudioTags: true })).toBe(
+      '[laughs] Fair point.',
+    );
+    expect(cleanSpokenText('[whispers] Psst.', { keepAudioTags: true })).toBe('Psst.');
   });
 });
