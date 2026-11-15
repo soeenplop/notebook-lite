@@ -274,6 +274,75 @@ export type Database = {
           },
         ];
       };
+      source_chunks: {
+        Row: {
+          char_end: number;
+          char_start: number;
+          content: string;
+          created_at: string;
+          embedding: unknown;
+          fts: unknown;
+          heading_path: string[];
+          id: string;
+          notebook_id: string;
+          ordinal: number;
+          page_end: number | null;
+          page_start: number | null;
+          source_id: string;
+          token_count: number;
+          user_id: string;
+        };
+        Insert: {
+          char_end: number;
+          char_start: number;
+          content: string;
+          created_at?: string;
+          embedding: unknown;
+          fts: unknown;
+          heading_path?: string[];
+          id?: string;
+          notebook_id: string;
+          ordinal: number;
+          page_end?: number | null;
+          page_start?: number | null;
+          source_id: string;
+          token_count: number;
+          user_id: string;
+        };
+        Update: {
+          char_end?: number;
+          char_start?: number;
+          content?: string;
+          created_at?: string;
+          embedding?: unknown;
+          fts?: unknown;
+          heading_path?: string[];
+          id?: string;
+          notebook_id?: string;
+          ordinal?: number;
+          page_end?: number | null;
+          page_start?: number | null;
+          source_id?: string;
+          token_count?: number;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'source_chunks_notebook_fk';
+            columns: ['notebook_id', 'user_id'];
+            isOneToOne: false;
+            referencedRelation: 'notebooks';
+            referencedColumns: ['id', 'user_id'];
+          },
+          {
+            foreignKeyName: 'source_chunks_source_fk';
+            columns: ['source_id', 'notebook_id'];
+            isOneToOne: false;
+            referencedRelation: 'sources';
+            referencedColumns: ['id', 'notebook_id'];
+          },
+        ];
+      };
       sources: {
         Row: {
           created_at: string;
@@ -342,6 +411,33 @@ export type Database = {
     };
     Functions: {
       language_regconfig: { Args: { code: string }; Returns: unknown };
+      match_chunks: {
+        Args: {
+          p_candidate_count?: number;
+          p_match_count?: number;
+          p_notebook_id: string;
+          p_query_embedding: unknown;
+          p_query_text: string;
+          p_rrf_k?: number;
+          p_source_ids: string[];
+          p_user_id?: string;
+        };
+        Returns: {
+          char_end: number;
+          char_start: number;
+          content: string;
+          heading_path: string[];
+          id: string;
+          keyword_rank: number;
+          ordinal: number;
+          page_end: number;
+          page_start: number;
+          score: number;
+          semantic_rank: number;
+          source_id: string;
+          token_count: number;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;
