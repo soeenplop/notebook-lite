@@ -364,7 +364,7 @@ function TopicStep({
                 <button
                   type="button"
                   onClick={() => choose(suggestion)}
-                  className="grid w-full gap-0.5 rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                  className="grid w-full gap-0.5 rounded-lg border p-3 text-left text-sm break-words transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                 >
                   <span className="font-medium">{suggestion.title}</span>
                   <span className="text-muted-foreground">{suggestion.angle}</span>
