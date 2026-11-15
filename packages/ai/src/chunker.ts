@@ -45,6 +45,28 @@ const DEFAULTS: Required<ChunkOptions> = {
   minSectionTokens: 200,
 };
 
+/** Upper bound for the context header of {@link chunkEmbeddingText}. */
+const MAX_HEADER_CHARS = 300;
+
+/**
+ * The text embedded for a chunk: a short context header (source title and heading path) above
+ * the content, so passages like "It costs 4 million" stay findable by their topic. Only the
+ * embedding sees the header; the stored and cited content stays the plain chunk.
+ */
+export function chunkEmbeddingText(
+  chunk: Pick<TextChunk, 'content' | 'headingPath'>,
+  sourceTitle: string | null,
+): string {
+  const title = sourceTitle?.trim() ?? '';
+  const path = chunk.headingPath[0] === title ? chunk.headingPath.slice(1) : chunk.headingPath;
+  const header = [title, path.join(' > ')]
+    .filter((part) => part.length > 0)
+    .join('\n')
+    .slice(0, MAX_HEADER_CHARS)
+    .trim();
+  return header ? `${header}\n\n${chunk.content}` : chunk.content;
+}
+
 /** Separator between segments in {@link documentText}. */
 export const SEGMENT_SEPARATOR = '\n\n';
 
