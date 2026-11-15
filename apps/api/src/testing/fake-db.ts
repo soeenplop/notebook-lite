@@ -13,16 +13,45 @@ export interface RecordedQuery {
 }
 
 /**
- * Minimal stand-in for a Supabase client: `from(table)` and `rpc(fn, args)` return a chainable
- * builder that records every call and resolves to the next queued result when awaited (results
- * are consumed in the order the queries are started). Enough to unit-test repository and router
- * logic; RLS itself is covered by the pgTAP tests.
+ * In-memory Storage: `list` behaves like Supabase (one folder level, sub-folders as entries
+ * with `id: null`), `remove` deletes exact paths. `failWith` makes every call fail.
  */
-export function fakeDb(...results: FakeResult[]): { db: Db; queries: RecordedQuery[] } {
+export interface FakeStorage {
+  objects: Map<string, Set<string>>;
+  put(bucket: string, ...paths: string[]): void;
+  removed: { bucket: string; paths: string[] }[];
+  failWith: Error | null;
+}
+
+/**
+ * Minimal stand-in for a Supabase client: `from(table)` and `rpc(fn, args)` return a chainable builder that records
+ * every call and resolves to the next queued result when awaited. Enough to unit-test repository
+ * and router logic; RLS itself is covered by the pgTAP tests. `events` records the order of
+ * table and Storage calls (`db:<table>`, `db:rpc:<fn>`, `storage.list:<bucket>`, `storage.remove:<bucket>`).
+ */
+export function fakeDb(...results: FakeResult[]): {
+  db: Db;
+  queries: RecordedQuery[];
+  storage: FakeStorage;
+  events: string[];
+} {
   const queries: RecordedQuery[] = [];
+  const events: string[] = [];
   let next = 0;
 
+  const storage: FakeStorage = {
+    objects: new Map(),
+    put(bucket, ...paths) {
+      const set = storage.objects.get(bucket) ?? new Set<string>();
+      for (const path of paths) set.add(path);
+      storage.objects.set(bucket, set);
+    },
+    removed: [],
+    failWith: null,
+  };
+
   const record = (table: string, ops: RecordedQuery['ops']): object => {
+    events.push(`db:${table}`);
     const query: RecordedQuery = { table, ops };
     queries.push(query);
     const result = results[next++] ?? { data: null, error: null };
@@ -47,9 +76,42 @@ export function fakeDb(...results: FakeResult[]): { db: Db; queries: RecordedQue
   };
 
   const client = {
-    from: (table: string) => record(table, []),
-    rpc: (fn: string, args: unknown) => record(`rpc:${fn}`, [['rpc', [args]]]),
+    from(table: string) {
+      return record(table, []);
+    },
+    rpc(fn: string, args: unknown) {
+      return record(`rpc:${fn}`, [['rpc', [args]]]);
+    },
+    storage: {
+      from(bucket: string) {
+        const all = () => [...(storage.objects.get(bucket) ?? [])];
+        return {
+          list(folder: string, options: { limit: number; offset: number }) {
+            events.push(`storage.list:${bucket}`);
+            if (storage.failWith) return Promise.resolve({ data: null, error: storage.failWith });
+            const prefix = `${folder}/`;
+            const entries = new Map<string, string | null>();
+            for (const path of all().filter((p) => p.startsWith(prefix))) {
+              const [name = '', ...rest] = path.slice(prefix.length).split('/');
+              entries.set(name, rest.length > 0 ? null : `id-${path}`);
+            }
+            const data = [...entries]
+              .toSorted(([a], [b]) => a.localeCompare(b))
+              .slice(options.offset, options.offset + options.limit)
+              .map(([name, id]) => ({ name, id }));
+            return Promise.resolve({ data, error: null });
+          },
+          remove(paths: string[]) {
+            events.push(`storage.remove:${bucket}`);
+            if (storage.failWith) return Promise.resolve({ data: null, error: storage.failWith });
+            storage.removed.push({ bucket, paths });
+            for (const path of paths) storage.objects.get(bucket)?.delete(path);
+            return Promise.resolve({ data: [], error: null });
+          },
+        };
+      },
+    },
   };
 
-  return { db: client as unknown as Db, queries };
+  return { db: client as unknown as Db, queries, storage, events };
 }

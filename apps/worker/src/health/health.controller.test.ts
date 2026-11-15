@@ -10,11 +10,15 @@ import { WorkerModule } from '../worker.module.js';
 const fakeQueue = {
   start: vi.fn<() => Promise<void>>(() => Promise.resolve()),
   stop: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+  work: vi.fn<(name: string, handler: unknown) => Promise<string>>(() =>
+    Promise.resolve('worker-id'),
+  ),
 };
 
 describe('GET /healthz', () => {
   let app: INestApplication;
   let startCallsOnInit = 0;
+  let queuesWorkedOnInit: string[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -23,6 +27,11 @@ describe('GET /healthz', () => {
           WORKER_PORT: 0,
           LOG_LEVEL: 'info',
           DATABASE_URL: 'postgres://test',
+          SUPABASE_URL: 'https://test-project.supabase.co',
+          SUPABASE_SECRET_KEY: 'sb_secret_test',
+          OPENAI_API_KEY: 'sk-test',
+          OPENAI_CHAT_MODEL: 'gpt-test',
+          OPENAI_EMBEDDING_MODEL: 'embedding-test',
         }),
       ],
     })
@@ -32,6 +41,7 @@ describe('GET /healthz', () => {
     app = moduleRef.createNestApplication();
     await app.init();
     startCallsOnInit = fakeQueue.start.mock.calls.length;
+    queuesWorkedOnInit = fakeQueue.work.mock.calls.map(([name]) => name);
   });
 
   afterAll(async () => {
@@ -45,5 +55,9 @@ describe('GET /healthz', () => {
 
   it('connects the job queue on startup', () => {
     expect(startCallsOnInit).toBe(1);
+  });
+
+  it('registers the ingest-source consumer', () => {
+    expect(queuesWorkedOnInit).toEqual(['ingest-source']);
   });
 });

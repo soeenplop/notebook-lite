@@ -24,6 +24,36 @@ Format: **Scope** (what part of the system / which document) · **Original decis
   - Server-side history is the source of truth for grounding and persistence.
   - The cited chunk is exactly what the model saw, so it is the passage to verify. A full-document view with in-place highlighting can follow later without schema changes.
 
+## 2026-11-16 — PDF extraction: LiteParse with OCR instead of unpdf
+
+- **Scope:** Ingestion (`apps/worker` PDF extractor and worker image), `SUPPORTED_LANGUAGES` (`packages/shared`), `docs/IMPLEMENTATION_PLAN.md` §1, §5.3 and §11.
+- **Original decision:** Claude's proposal in the plan: PDFs are extracted as flat text page by page via `unpdf` (pdf.js), and the title comes from the PDF metadata. OCR for scanned PDFs is out of scope, so a PDF without a text layer fails.
+- **Correction:**
+  - PDFs are converted to Markdown page by page with **LiteParse** (`@llamaindex/liteparse`, PDFium) inside the worker: headings, lists and tables come from the spatial layout, running headers and footers are dropped, and page numbers are kept for citations.
+  - Pages without a usable text layer are read with Tesseract **OCR**, the notebook language first (`ocrLanguage` per entry in `SUPPORTED_LANGUAGES`). The `tessdata_best` files for all supported languages are baked into the worker image (`TESSDATA_PREFIX`), with checksums.
+  - DOCX stays `mammoth` → Markdown, Markdown is used as-is.
+- **Rationale:**
+  - Decision by the project owner. Flat PDF text gives one block per page, no heading paths for the chunker, and hyphenated words that hurt embeddings and FTS; scanned PDFs could not be used at all.
+  - LiteParse runs in the worker process in milliseconds per page, needs no models and no extra service, and only OCRs pages that need it.
+  - DOCX through LiteParse would need LibreOffice in the worker image; `mammoth` already keeps headings and lists.
+  - Trade-offs: LiteParse exposes no PDF `/Info` title (the first heading or the upload name is used), and OCR quality is Tesseract's.
+
+## 2026-11-16 — M3 ingestion details: chunk writes, URL snapshots, job cancellation
+
+- **Scope:** Source ingestion and notebook delete (`docs/IMPLEMENTATION_PLAN.md` §5.2, §5.3; M3 steps 22–23).
+- **Original decision:**
+  - The worker inserts all chunks of a source in one transaction.
+  - URL sources store "a snapshot" in Storage (format unspecified).
+  - Deleting a notebook cancels its pending pg-boss jobs, and jobs also re-check that the notebook exists.
+- **Correction:**
+  - Chunks are written through PostgREST in batches of 100 rows. A 3072-dim vector makes every row large, and one request per source could exceed request size limits. The source only becomes `ready` after the last batch, and every attempt first deletes the source's earlier chunks, so a failed or retried job never leaves a mix that is visible as ready.
+  - The URL snapshot is the extracted Markdown (`sources/{uid}/{nid}/{sid}/snapshot.md`), not the raw HTML. Chunk offsets refer to exactly this text, and the `sources` bucket only accepts document types.
+  - Notebook delete does not cancel queued jobs. The API removes the Storage folders and the notebook row; the job re-checks its source (which cascades with the notebook) before each step and stops quietly. A snapshot written after the cleanup is removed again.
+- **Rationale:**
+  - Request size limits and the existing idempotent retry path make batching safe.
+  - The Markdown snapshot reproduces what was indexed; the raw page is not needed.
+  - pg-boss jobs carry no notebook index, so cancelling would require scanning the queue; the existence check covers the same cases with less coupling (agreed for M3).
+
 ## 2026-11-15 — Shared groundwork before M3, M4 and M5 run in parallel
 
 - **Scope:** Milestone order and sequencing (`docs/IMPLEMENTATION_PLAN.md` §10).
