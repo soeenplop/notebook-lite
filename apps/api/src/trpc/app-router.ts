@@ -1,3 +1,4 @@
+import { chatsRouter } from '../chats/chats.router.js';
 import { notebooksRouter } from '../notebooks/notebooks.router.js';
 import { sourcesRouter } from '../sources/sources.router.js';
 import { protectedProcedure, router } from './trpc.js';
@@ -11,6 +12,7 @@ export const appRouter = router({
     me: protectedProcedure.query(({ ctx }) => ({ id: ctx.user.id, email: ctx.user.email })),
   }),
   notebooks: notebooksRouter,
+  chats: chatsRouter,
   sources: sourcesRouter,
 });
 
