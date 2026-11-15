@@ -2,20 +2,22 @@
 
 import { notebookIdSchema } from '@notebook-lite/shared';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeftIcon, FileTextIcon, MessageSquareIcon, MicIcon } from 'lucide-react';
+import { ArrowLeftIcon, MicIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ComponentType, ReactNode } from 'react';
+import { ChatsPanel } from '@/components/chats/chats-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { languageName, pluralize } from '@/lib/format';
 import { useTRPC } from '@/lib/trpc/react';
+import { SourcesPanel } from '../sources/sources-panel';
 import { NotebookActions } from './notebook-actions';
 
 /**
- * Notebook workspace. M2 provides the frame (header, sections); sources, chats and podcasts
- * fill the sections in later milestones.
+ * Notebook workspace: header, sources panel (M3), chats (M4) and a link to the podcasts page
+ * (M5).
  */
 export function NotebookShell({ notebookId }: { notebookId: string }) {
   const trpc = useTRPC();
@@ -66,21 +68,10 @@ export function NotebookShell({ notebookId }: { notebookId: string }) {
         <NotebookActions notebook={data} onDeleted={() => router.replace('/')} />
       </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Section
-          icon={FileTextIcon}
-          title="Sources"
-          count={pluralize(data.counts.sources, 'source')}
-        >
-          Upload PDF, DOCX or Markdown files, or add web pages by URL.
-        </Section>
-        <Section
-          icon={MessageSquareIcon}
-          title="Chats"
-          count={pluralize(data.counts.chats, 'chat')}
-        >
-          Ask questions answered only from your selected sources, with citations.
-        </Section>
+      <SourcesPanel notebookId={data.id} />
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <ChatsPanel notebookId={data.id} />
         <Section
           icon={MicIcon}
           title="Podcasts"

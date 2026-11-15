@@ -41,4 +41,8 @@ describe('loadEnv', () => {
     const complete = loadEnv({ ...required, ELEVENLABS_API_KEY: 'xi-test' });
     expect(missingPodcastConfig(complete)).toBeNull();
   });
+
+  it('requires Supabase service access and an OpenAI key', () => {
+    expect(() => loadEnv({ ...required, SUPABASE_URL: 'not a url' })).toThrow(/SUPABASE_URL/);
+  });
 });

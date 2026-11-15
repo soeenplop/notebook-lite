@@ -19,7 +19,7 @@ const fakeQueue = {
 describe('GET /healthz', () => {
   let app: INestApplication;
   let startCallsOnInit = 0;
-  let queuesWorked: unknown[] = [];
+  let queuesWorkedOnInit: string[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -31,7 +31,7 @@ describe('GET /healthz', () => {
     app = moduleRef.createNestApplication();
     await app.init();
     startCallsOnInit = fakeQueue.start.mock.calls.length;
-    queuesWorked = fakeQueue.work.mock.calls.map((call) => call[0]);
+    queuesWorkedOnInit = fakeQueue.work.mock.calls.map(([name]) => name);
   });
 
   afterAll(async () => {
@@ -47,7 +47,7 @@ describe('GET /healthz', () => {
     expect(startCallsOnInit).toBe(1);
   });
 
-  it('starts consuming podcast jobs', () => {
-    expect(queuesWorked).toEqual(['generate-podcast']);
+  it('registers the ingest-source and generate-podcast consumers', () => {
+    expect(queuesWorkedOnInit.toSorted()).toEqual(['generate-podcast', 'ingest-source']);
   });
 });

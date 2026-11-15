@@ -30,5 +30,5 @@ export const notebooksRouter = router({
 
   delete: protectedProcedure
     .input(notebookByIdInputSchema)
-    .mutation(({ ctx, input }) => deleteNotebook(ctx.supabase, input.id)),
+    .mutation(({ ctx, input }) => deleteNotebook(ctx.supabase, ctx.user.id, input.id)),
 });

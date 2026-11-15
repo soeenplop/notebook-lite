@@ -1,132 +1,155 @@
-import type { ServiceDb } from '../podcasts/podcast-pipeline.js';
+import type { ServiceDb } from '../supabase/service-db.js';
 
 type Row = Record<string, unknown>;
 
-export interface FakeState {
-  tables: Record<string, Row[]>;
-  /** Rows returned by `rpc('match_chunks', …)`. */
-  matchChunks: Row[];
-  /** Storage objects of the `podcasts` bucket by path. */
-  storage: Map<string, Buffer>;
-  /** Every call, for assertions: table/rpc/storage name, filters and payloads. */
-  log: { target: string; op: string; filters: [string, string, unknown][]; payload?: unknown }[];
-  /** Makes the next Storage upload fail once (simulates a transient error). */
-  failNextUpload?: boolean;
+interface DbError {
+  message: string;
+  code?: string;
 }
 
 /**
- * A tiny in-memory stand-in for the service-role Supabase client, enough for the podcast
- * pipeline: select/update with eq/in filters, `match_chunks` and the Storage calls it uses.
+ * In-memory stand-in for the service-role Supabase client, enough for the ingestion job:
+ * `from(table)` with select/insert/update/delete, `eq` filters, `maybeSingle`, and Storage
+ * upload/download/remove. Every table query must filter by `user_id` (inserts must set it):
+ * otherwise it throws, which enforces the service-role rule from AGENTS.md in tests.
  */
-export function fakeServiceDb(initial: Partial<FakeState> = {}): {
-  db: ServiceDb;
-  state: FakeState;
-} {
-  const state: FakeState = {
-    tables: {},
-    matchChunks: [],
-    storage: new Map(),
-    log: [],
-    ...initial,
-  };
+export class FakeServiceDb {
+  readonly tables: Record<string, Row[]> = { sources: [], source_chunks: [] };
+  readonly objects = new Map<string, Uint8Array>();
+  readonly uploads: { path: string; contentType: string | undefined }[] = [];
+  /** Called before each table query executes; may mutate state or return an error. */
+  beforeQuery: ((table: string, action: string) => DbError | undefined) | undefined;
+  /** Error returned by the next Storage download. */
+  downloadError: DbError | null = null;
 
-  function query(table: string) {
-    const filters: [string, string, unknown][] = [];
-    let op = 'select';
-    let payload: unknown;
-    let single = false;
-
-    const matches = (row: Row) =>
-      filters.every(([kind, column, value]) =>
-        kind === 'eq' ? row[column] === value : Array.isArray(value) && value.includes(row[column]),
-      );
-
-    const execute = () => {
-      state.log.push({ target: table, op, filters: [...filters], payload });
-      const rows = (state.tables[table] ??= []);
-      let result: Row[];
-      if (op === 'update') {
-        result = rows.filter(matches);
-        for (const row of result) Object.assign(row, payload);
-      } else {
-        result = rows.filter(matches);
-      }
-      return { data: single ? (result[0] ?? null) : result, error: null };
-    };
-
-    // A thenable query builder, like supabase-js's.
-    const builder: Record<string, unknown> = {
-      select: () => builder,
-      update: (patch: unknown) => {
-        op = 'update';
-        payload = patch;
-        return builder;
-      },
-      eq: (column: string, value: unknown) => {
-        filters.push(['eq', column, value]);
-        return builder;
-      },
-      in: (column: string, values: unknown) => {
-        filters.push(['in', column, values]);
-        return builder;
-      },
-      maybeSingle: () => {
-        single = true;
-        return builder;
-      },
-      // oxlint-disable-next-line unicorn/no-thenable
-      then: (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>
-        Promise.resolve().then(execute).then(resolve, reject),
-    };
-    return builder;
+  get client(): ServiceDb {
+    return this as unknown as ServiceDb;
   }
 
-  const bucket = (name: string) => ({
-    list: (folder: string) => {
-      state.log.push({ target: `storage:${name}`, op: 'list', filters: [], payload: folder });
-      const prefix = `${folder}/`;
-      const data = [...state.storage.keys()]
-        .filter((key) => key.startsWith(prefix) && !key.slice(prefix.length).includes('/'))
-        .map((key) => ({ name: key.slice(prefix.length) }));
-      return Promise.resolve({ data, error: null });
-    },
-    download: (path: string) => {
-      state.log.push({ target: `storage:${name}`, op: 'download', filters: [], payload: path });
-      const file = state.storage.get(path);
-      return Promise.resolve(
-        file
-          ? { data: new Blob([new Uint8Array(file)]), error: null }
-          : { data: null, error: new Error('not found') },
-      );
-    },
-    upload: (path: string, body: Buffer, options: unknown) => {
-      state.log.push({
-        target: `storage:${name}`,
-        op: 'upload',
-        filters: [],
-        payload: { path, options },
-      });
-      if (state.failNextUpload) {
-        state.failNextUpload = false;
-        return Promise.resolve({ data: null, error: new Error('storage unavailable') });
-      }
-      state.storage.set(path, Buffer.from(body));
-      return Promise.resolve({ data: { path }, error: null });
-    },
-    remove: (paths: string[]) => {
-      state.log.push({ target: `storage:${name}`, op: 'remove', filters: [], payload: paths });
-      for (const path of paths) state.storage.delete(path);
-      return Promise.resolve({ data: [], error: null });
-    },
-  });
+  from(table: string): FakeQuery {
+    return new FakeQuery(this, table);
+  }
 
-  const client = {
-    from: query,
-    rpc: (fn: string, args: unknown) => {
-      state.log.push({ target: `rpc:${fn}`, op: 'rpc', filters: [], payload: args });
-      return Promise.resolve({ data: state.matchChunks, error: null });
-    },
-    storage: { from: bucket },
+  readonly storage = {
+    from: (bucket: string) => ({
+      upload: (path: string, body: Uint8Array, options?: { contentType?: string }) => {
+        this.objects.set(`${bucket}/${path}`, body);
+        this.uploads.push({ path: `${bucket}/${path}`, contentType: options?.contentType });
+        return Promise.resolve({ data: { path }, error: null });
+      },
+      download: (path: string) => {
+        const error = this.downloadError;
+        if (error) return Promise.resolve({ data: null, error });
+        const body = this.objects.get(`${bucket}/${path}`);
+        if (!body) return Promise.resolve({ data: null, error: { message: 'Object not found' } });
+        return Promise.resolve({ data: new Blob([new Uint8Array(body)]), error: null });
+      },
+      remove: (paths: string[]) => {
+        for (const path of paths) this.objects.delete(`${bucket}/${path}`);
+        return Promise.resolve({ data: [], error: null });
+      },
+    }),
   };
-  return { db: client as unknown as ServiceDb, state };
+}
+
+class FakeQuery implements PromiseLike<{ data: unknown; error: DbError | null }> {
+  private action: 'select' | 'insert' | 'update' | 'delete' = 'select';
+  private payload: Row | Row[] | undefined;
+  private readonly filters: [string, unknown][] = [];
+  private single = false;
+
+  constructor(
+    private readonly db: FakeServiceDb,
+    private readonly table: string,
+  ) {}
+
+  select(): this {
+    return this;
+  }
+
+  insert(rows: Row | Row[]): this {
+    this.action = 'insert';
+    this.payload = rows;
+    return this;
+  }
+
+  update(patch: Row): this {
+    this.action = 'update';
+    this.payload = patch;
+    return this;
+  }
+
+  delete(): this {
+    this.action = 'delete';
+    return this;
+  }
+
+  eq(column: string, value: unknown): this {
+    this.filters.push([column, value]);
+    return this;
+  }
+
+  maybeSingle(): this {
+    this.single = true;
+    return this;
+  }
+
+  // Intentionally thenable, like supabase-js query builders.
+  // oxlint-disable-next-line unicorn/no-thenable
+  then<R1 = { data: unknown; error: DbError | null }, R2 = never>(
+    onFulfilled?:
+      ((value: { data: unknown; error: DbError | null }) => R1 | PromiseLike<R1>) | null,
+    onRejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
+  ): PromiseLike<R1 | R2> {
+    return Promise.resolve()
+      .then(() => this.execute())
+      .then(onFulfilled, onRejected);
+  }
+
+  private execute(): { data: unknown; error: DbError | null } {
+    const injected = this.db.beforeQuery?.(this.table, this.action);
+    if (injected) return { data: null, error: injected };
+    const rows = (this.db.tables[this.table] ??= []);
+
+    if (this.action === 'insert') {
+      const inserted = Array.isArray(this.payload) ? this.payload : [this.payload ?? {}];
+      for (const row of inserted) {
+        if (typeof row['user_id'] !== 'string') {
+          throw new Error(`insert into ${this.table} without user_id`);
+        }
+        if (this.table === 'source_chunks' && !this.sourceExists(row)) {
+          return { data: null, error: { code: '23503', message: 'foreign key violation' } };
+        }
+      }
+      rows.push(...inserted.map((row) => structuredClone(row)));
+      return { data: null, error: null };
+    }
+
+    if (!this.filters.some(([column]) => column === 'user_id')) {
+      throw new Error(`${this.action} on ${this.table} without a user_id filter`);
+    }
+    const matches = rows.filter((row) =>
+      this.filters.every(([column, value]) => row[column] === value),
+    );
+
+    if (this.action === 'update') {
+      for (const row of matches) Object.assign(row, this.payload);
+      return { data: matches.map((row) => ({ id: row['id'] })), error: null };
+    }
+    if (this.action === 'delete') {
+      this.db.tables[this.table] = rows.filter((row) => !matches.includes(row));
+      return { data: null, error: null };
+    }
+    if (this.single) return { data: matches[0] ? { ...matches[0] } : null, error: null };
+    return { data: matches.map((row) => structuredClone(row)), error: null };
+  }
+
+  private sourceExists(chunk: Row): boolean {
+    return (this.db.tables['sources'] ?? []).some(
+      (source) =>
+        source['id'] === chunk['source_id'] &&
+        source['notebook_id'] === chunk['notebook_id'] &&
+        source['user_id'] === chunk['user_id'],
+    );
+  }
 }

@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 # NestJS background worker. Build context: repository root.
 #   docker build -f docker/worker.Dockerfile -t notebook-lite-worker .
-# The runtime includes ffmpeg/ffprobe for joining podcast audio batches.
+# The runtime includes ffmpeg/ffprobe for joining podcast audio batches and Tesseract language
+# data for OCR of scanned PDFs (LiteParse).
 
 ARG NODE_IMAGE=node:26.13.0-slim
 
@@ -34,7 +35,8 @@ COPY packages/db/package.json packages/db/
 COPY packages/ai/package.json packages/ai/
 COPY packages/queue/package.json packages/queue/
 COPY apps/worker/package.json apps/worker/
-RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund -w @notebook-lite/worker
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund -w @notebook-lite/worker \
+ && mkdir -p apps/worker/node_modules
 
 # --- runtime -------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS runtime
@@ -42,10 +44,21 @@ FROM ${NODE_IMAGE} AS runtime
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg \
  && rm -rf /var/lib/apt/lists/*
+# Tesseract language data for LiteParse's OCR: one file per `ocrLanguage` in SUPPORTED_LANGUAGES
+# (packages/shared). The same tessdata_best files LiteParse would otherwise download at runtime.
+ADD --checksum=sha256:8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba \
+    https://github.com/tesseract-ocr/tessdata_best/raw/4.1.0/eng.traineddata /usr/share/tessdata/
+ADD --checksum=sha256:8407331d6aa0229dc927685c01a7938fc5a641d1a9524f74838cdac599f0d06e \
+    https://github.com/tesseract-ocr/tessdata_best/raw/4.1.0/deu.traineddata /usr/share/tessdata/
+# Readable for the `node` user (ADD creates the files 0600 and the directory root-only).
+RUN chmod -R a+rX /usr/share/tessdata
 ENV NODE_ENV=production \
-    WORKER_PORT=4001
+    WORKER_PORT=4001 \
+    TESSDATA_PREFIX=/usr/share/tessdata
 WORKDIR /app
 COPY --from=prod-deps /app/node_modules node_modules
+# Versions that differ from the hoisted ones (e.g. undici) are installed next to the workspace.
+COPY --from=prod-deps /app/apps/worker/node_modules apps/worker/node_modules
 COPY --from=build /app/packages/shared/package.json packages/shared/
 COPY --from=build /app/packages/shared/dist packages/shared/dist
 COPY --from=build /app/packages/db/package.json packages/db/

@@ -16,7 +16,7 @@ Derived from [BRIEFING.md](BRIEFING.md). Deviations from this plan are logged in
 
 **Out of scope (MVP)**
 
-Sharing/collaboration and multiple members per notebook, moving or copying sources between notebooks, OCR for scanned PDFs, YouTube/audio sources, editing scripts before TTS, billing/quotas beyond basic rate limits, UI localization (the app UI stays in one language; the notebook language only controls generated content).
+Sharing/collaboration and multiple members per notebook, moving or copying sources between notebooks, YouTube/audio sources, editing scripts before TTS, billing/quotas beyond basic rate limits, UI localization (the app UI stays in one language; the notebook language only controls generated content).
 
 ## 2. Architecture
 
@@ -125,21 +125,21 @@ Exception: `messages` reach their notebook through `chat_id` and have no `notebo
 - **Delete** (confirmation dialog showing counts of sources, chats, and podcasts):
   1. The API deletes the Storage prefixes `sources/{uid}/{notebookId}/` and `podcasts/{uid}/{notebookId}/` with the user client (RLS).
   2. It deletes the notebook row. Sources, chunks, chats, messages, and podcasts cascade.
-  3. pending pg-boss jobs for the notebook are cancelled. Worker jobs also re-check that the notebook exists before each step and abort quietly if it doesn't.
+  3. Queued jobs are not cancelled: worker jobs re-check that their entity (and thus the notebook) still exists before each step and abort quietly if it doesn't (see CORRECTIONS).
 
 ### 5.3 Source ingestion
 
 1. Web uploads the file directly to Storage (`sources/{uid}/{notebookId}/{sourceId}/{name}`) with supabase-js (RLS-protected), then calls `sources.create({ notebookId, … })` (tRPC) → row with `status = 'pending'` → API enqueues `ingest-source`.
    URL sources: `sources.createFromUrl` validates the URL and enqueues; the worker fetches.
 2. Worker pipeline:
-   - **Extract**
-     - PDF: `unpdf` (pdf.js) page by page → keep page numbers.
+   - **Extract** (see [CORRECTIONS](CORRECTIONS.md))
+     - PDF: LiteParse (PDFium) page by page → Markdown with headings, lists and tables; page numbers kept; Tesseract OCR for pages without a text layer (notebook language first).
      - DOCX: `mammoth` → HTML → Markdown (`turndown`) to retain headings.
      - MD: read as-is.
-     - URL: fetch with SSRF protection (http/https only, block private/link-local IPs after DNS resolution, redirect limit, timeout, max size, HTML only) → `@mozilla/readability` + `jsdom` → Markdown. Store snapshot in Storage for reproducibility.
+     - URL: fetch with SSRF protection (http/https only, standard web ports, block private/link-local IPs after DNS resolution and again at connect time, redirect limit with per-hop checks, timeout, max size, HTML only) → `@mozilla/readability` + `jsdom` → Markdown. Store the Markdown snapshot in Storage for reproducibility.
    - **Chunk**: structure-aware splitter (headings/paragraphs), ~800 tokens target, ~120 overlap, never cross page boundaries for PDFs without recording `page_start/page_end`.
    - **Embed**: AI SDK `embedMany` in batches (≤ 2048 inputs, token-aware), retry with backoff.
-   - **Persist**: insert chunks in one transaction; set `status = 'ready'`, `title` (PDF metadata / first heading / `<title>`).
+   - **Persist**: delete earlier chunks of the source, insert the new ones in batches, then set `status = 'ready'`, `title` (`<title>` for pages, else the first heading).
    - Failures → `status = 'failed'` with a user-readable `error`; pg-boss retries transient errors (3×, exponential).
 3. Web shows status badges; list refreshes via polling while any source is non-terminal (Supabase Realtime is a later optimization).
 4. Delete source: deletes row (chunks cascade) and Storage objects; existing message citations keep their snapshot and render as "source deleted".
@@ -302,7 +302,7 @@ After G, **M3, M4 and M5 run in parallel** on separate branches and merge in tha
 | Text-to-dialogue limits or language handling differ from expectations | Spike at the start of M5. Fallback: per-segment TTS + ffmpeg (logged in CORRECTIONS if needed). |
 | SSRF via URL sources | Resolve DNS and block private ranges, protocol/size/time limits. |
 | Service-role key misuse | Only in worker; explicit `user_id` filters; code review rule in AGENTS.md. |
-| Scanned PDFs yield no text | Detect empty extraction → `failed` with clear message (OCR out of scope). |
+| Scanned PDFs yield no text | LiteParse OCRs pages without a text layer (Tesseract); a source without any text → `failed` with a clear message. |
 
 ## 12. Open Questions
 

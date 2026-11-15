@@ -23,6 +23,7 @@ describe('loadEnv', () => {
       CORS_ORIGIN: ['http://localhost:3000', 'https://notebook-lite.soeenplop.dev'],
       LOG_LEVEL: 'info',
       RATE_LIMIT_PER_MINUTE: 300,
+      CHAT_MESSAGES_PER_MINUTE: 10,
       PODCAST_SUGGESTIONS_PER_HOUR: 20,
       PODCASTS_PER_DAY: 10,
       OPENAI_API_KEY: 'sk-test',

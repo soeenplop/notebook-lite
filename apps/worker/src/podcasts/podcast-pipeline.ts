@@ -8,7 +8,6 @@ import {
   type PodcastExcerpt,
   toVectorLiteral,
 } from '@notebook-lite/ai';
-import type { Database } from '@notebook-lite/db';
 import {
   type GeneratePodcastJob,
   getLanguage,
@@ -24,13 +23,10 @@ import {
   podcastScriptSchema,
   podcastStorageFolder,
 } from '@notebook-lite/shared';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { type DialogueSynthesizer, ElevenLabsError } from './elevenlabs.client.js';
 import type { AudioTools } from './audio.js';
+import type { ServiceDb } from '../supabase/service-db.js';
 import { buildDialogueBatches } from './tts-batches.js';
-
-/** Service-role client: bypasses RLS, so every query below filters by `user_id`. */
-export type ServiceDb = SupabaseClient<Database>;
 
 export interface PipelineLogger {
   log(message: string): void;

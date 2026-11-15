@@ -24,7 +24,7 @@ function languageLabel(language: LanguageCode): string {
 }
 
 /** Renders excerpts as delimited blocks. Titles are attributes so they cannot break the format. */
-export function formatExcerpts(excerpts: readonly PodcastExcerpt[]): string {
+export function formatPodcastExcerpts(excerpts: readonly PodcastExcerpt[]): string {
   return excerpts
     .map((excerpt, index) => {
       const title = excerpt.sourceTitle.replaceAll('"', "'").replaceAll(/\s+/g, ' ');
@@ -48,7 +48,7 @@ export function topicSuggestionsSystemPrompt(language: LanguageCode): string {
 }
 
 export function topicSuggestionsUserPrompt(excerpts: readonly PodcastExcerpt[]): string {
-  return `Excerpts from the selected sources:\n\n${formatExcerpts(excerpts)}`;
+  return `Excerpts from the selected sources:\n\n${formatPodcastExcerpts(excerpts)}`;
 }
 
 // --- scripts ------------------------------------------------------------------
@@ -98,7 +98,7 @@ export function scriptUserPrompt(
     'Open with a short hook that introduces the topic, and close with a brief wrap-up.',
     'Also give the episode a short title (at most 10 words).',
     '',
-    `Excerpts:\n\n${formatExcerpts(excerpts)}`,
+    `Excerpts:\n\n${formatPodcastExcerpts(excerpts)}`,
   ].join('\n');
 }
 
@@ -116,7 +116,7 @@ export function outlineUserPrompt(
     'section give a heading and the key points from the excerpts it covers. Do not repeat points',
     'across sections. Do not write the script yet.',
     '',
-    `Excerpts:\n\n${formatExcerpts(excerpts)}`,
+    `Excerpts:\n\n${formatPodcastExcerpts(excerpts)}`,
   ].join('\n');
 }
 
@@ -160,6 +160,6 @@ export function sectionUserPrompt(input: {
     '',
     `End of the previous section:\n${previous}`,
     '',
-    `Excerpts:\n\n${formatExcerpts(input.excerpts)}`,
+    `Excerpts:\n\n${formatPodcastExcerpts(input.excerpts)}`,
   ].join('\n');
 }
