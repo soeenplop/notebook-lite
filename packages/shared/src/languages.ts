@@ -18,10 +18,10 @@ export const SUPPORTED_LANGUAGES = {
     /** Tesseract language for OCR of scanned PDF pages (tessdata file name). */
     ocrLanguage: 'deu',
     /**
-     * ElevenLabs voice IDs: A hosts (and speaks monologues), B joins dialogues. Default voices
-     * (Laura, Brian): voice-library voices need a paid plan via the API.
+     * ElevenLabs voice IDs: A hosts (and speaks monologues), B joins dialogues. Voice-library
+     * voices, which need a paid ElevenLabs plan via the API.
      */
-    podcastVoices: { A: 'FGY2WhTYpPnrIDTdsKH5', B: 'nPczCjzI2devNBz1zQrb' },
+    podcastVoices: { A: 'gSZiss4v1BGsE1cTgoWF', B: 'cwXXmRbp4lGQdqLfbcKH' },
     wordsPerMinute: 130,
   },
   en: {
@@ -31,8 +31,7 @@ export const SUPPORTED_LANGUAGES = {
     ftsConfig: 'english',
     elevenLabsCode: 'en',
     ocrLanguage: 'eng',
-    // Default voices Jessica and George
-    podcastVoices: { A: 'cgSgspJ2msm6clMCkdW9', B: 'JBFqnCBsd6RMkjVDRZzb' },
+    podcastVoices: { A: 'T2sZgOl8ol4kf4u6yM2z', B: 'BAdH0bMfq6VleQGLXj38' },
     wordsPerMinute: 150,
   },
 } as const;
