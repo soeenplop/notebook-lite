@@ -7,6 +7,7 @@ import {
   podcastScriptSchema,
   podcastTopicSuggestionsSchema,
   podcastWordTarget,
+  stripAudioTags,
   suggestPodcastTopicsInputSchema,
 } from './podcasts.js';
 
@@ -80,5 +81,14 @@ describe('podcast contracts', () => {
     expect(isActivePodcastStatus('synthesizing')).toBe(true);
     expect(isActivePodcastStatus('ready')).toBe(false);
     expect(isActivePodcastStatus('failed')).toBe(false);
+  });
+});
+
+describe('stripAudioTags', () => {
+  it('removes audio tags and keeps the spoken text', () => {
+    expect(stripAudioTags('[laughs] Really? [curious] Tell me more.')).toBe(
+      'Really? Tell me more.',
+    );
+    expect(stripAudioTags('No tags here.')).toBe('No tags here.');
   });
 });
