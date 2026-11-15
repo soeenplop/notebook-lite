@@ -5,7 +5,7 @@ import {
   podcastAudioPath,
   podcastBatchPath,
   podcastScriptSchema,
-  podcastTopicSuggestionsSchema,
+  podcastTopicSuggestionSchema,
   podcastWordTarget,
   stripAudioTags,
   suggestPodcastTopicsInputSchema,
@@ -52,12 +52,9 @@ describe('podcast contracts', () => {
     );
   });
 
-  it('requires exactly three topic suggestions', () => {
-    const topic = { title: 't', angle: 'a' };
-    expect(podcastTopicSuggestionsSchema.safeParse({ topics: [topic, topic] }).success).toBe(false);
-    expect(podcastTopicSuggestionsSchema.safeParse({ topics: [topic, topic, topic] }).success).toBe(
-      true,
-    );
+  it('validates topic suggestions', () => {
+    expect(podcastTopicSuggestionSchema.safeParse({ title: 't', angle: 'a' }).success).toBe(true);
+    expect(podcastTopicSuggestionSchema.safeParse({ title: '', angle: 'a' }).success).toBe(false);
   });
 
   it('validates scripts', () => {

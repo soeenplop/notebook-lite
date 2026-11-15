@@ -1,4 +1,5 @@
 import type { LanguageModelV4CallOptions, LanguageModelV4GenerateResult } from '@ai-sdk/provider';
+import { simulateReadableStream } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, it } from 'vitest';
 import {
@@ -6,7 +7,8 @@ import {
   countScriptWords,
   generatePodcastScript,
   OUTLINE_SECTION_COUNT,
-  suggestPodcastTopics,
+  streamPodcastTopics,
+  TOPIC_REASONING_EFFORT,
 } from './podcasts.js';
 
 const excerpts = [
@@ -42,37 +44,90 @@ function promptText(call: LanguageModelV4CallOptions | undefined): string {
   return JSON.stringify(call?.prompt ?? []);
 }
 
-describe('suggestPodcastTopics', () => {
+/** A mock model that streams `text` in small deltas, like a structured-output response. */
+function streamingModel(text: string) {
+  const deltas = text.match(/.{1,12}/gs) ?? [];
+  return new MockLanguageModelV4({
+    doStream: () =>
+      Promise.resolve({
+        stream: simulateReadableStream({
+          chunks: [
+            { type: 'text-start', id: 't' },
+            ...deltas.map((delta) => ({ type: 'text-delta' as const, id: 't', delta })),
+            { type: 'text-end', id: 't' },
+            {
+              type: 'finish',
+              finishReason: { unified: 'stop', raw: 'stop' },
+              usage: jsonResult(null).usage,
+            },
+          ],
+        }),
+      }),
+  });
+}
+
+async function collect<T>(stream: AsyncIterable<T>): Promise<T[]> {
+  const items: T[] = [];
+  for await (const item of stream) items.push(item);
+  return items;
+}
+
+describe('streamPodcastTopics', () => {
   const topics = [
     { title: 'Solar **boom**', angle: 'Why capacity doubled [1].' },
     { title: 'Cheaper storage', angle: 'What falling costs change.' },
     { title: 'Grid limits', angle: 'Where the bottlenecks are.' },
   ];
 
-  it('returns three cleaned topics and asks for the notebook language', async () => {
-    const model = mockModel({ topics });
-    const result = await suggestPodcastTopics(model, { language: 'de', excerpts });
+  it('streams three cleaned topics with low reasoning effort, in the notebook language', async () => {
+    const model = streamingModel(JSON.stringify({ elements: topics }));
+    const result = await collect(streamPodcastTopics(model, { language: 'de', excerpts }));
     expect(result).toEqual([
       { title: 'Solar boom', angle: 'Why capacity doubled.' },
       topics[1],
       topics[2],
     ]);
-    const prompt = promptText(model.doGenerateCalls[0]);
+    const call = model.doStreamCalls[0];
+    expect(call?.providerOptions).toEqual({ openai: { reasoningEffort: TOPIC_REASONING_EFFORT } });
+    const prompt = promptText(call);
     expect(prompt).toContain('German (Deutsch)');
     expect(prompt).toContain('Storage costs fell by 40 percent.');
     expect(prompt).toContain('source=\\"Report \'2026\'\\"');
   });
 
-  it('rejects an answer without exactly three topics', async () => {
-    const model = mockModel({ topics: topics.slice(0, 2) });
+  it('can be consumed one topic at a time', async () => {
+    const model = streamingModel(JSON.stringify({ elements: topics }));
+    const stream = streamPodcastTopics(model, { language: 'en', excerpts });
+    const first = await stream.next();
+    expect(first.value).toEqual({ title: 'Solar boom', angle: 'Why capacity doubled.' });
+    await stream.return();
+  });
+
+  it('stops after three topics', async () => {
+    const model = streamingModel(JSON.stringify({ elements: [...topics, topics[1]] }));
+    const result = await collect(streamPodcastTopics(model, { language: 'en', excerpts }));
+    expect(result).toHaveLength(3);
+  });
+
+  it('fails when the model suggests nothing', async () => {
+    const model = streamingModel(JSON.stringify({ elements: [] }));
     await expect(
-      suggestPodcastTopics(model, { language: 'en', excerpts, maxRetries: 0 }),
-    ).rejects.toThrow(/No object generated|did not match schema/i);
+      collect(streamPodcastTopics(model, { language: 'en', excerpts, maxRetries: 0 })),
+    ).rejects.toThrow(/no topics/);
+  });
+
+  it('surfaces model errors', async () => {
+    const model = new MockLanguageModelV4({
+      doStream: () => Promise.reject(new Error('model down')),
+    });
+    await expect(
+      collect(streamPodcastTopics(model, { language: 'en', excerpts, maxRetries: 0 })),
+    ).rejects.toThrow(/model down/);
   });
 
   it('needs excerpts', async () => {
     await expect(
-      suggestPodcastTopics(mockModel(), { language: 'en', excerpts: [] }),
+      collect(streamPodcastTopics(streamingModel(''), { language: 'en', excerpts: [] })),
     ).rejects.toThrow(/no excerpts/);
   });
 });
