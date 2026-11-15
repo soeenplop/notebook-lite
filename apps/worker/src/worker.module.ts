@@ -3,6 +3,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { ENV, type WorkerEnv } from './config/env.js';
 import { HealthController } from './health/health.controller.js';
 import { loggerParams } from './logging.js';
+import { PodcastConsumer, podcastPipelineProvider } from './podcasts/podcast.consumer.js';
 import { JobQueueLifecycle, jobQueueProvider } from './queue/job-queue.provider.js';
 
 /**
@@ -17,7 +18,13 @@ export class WorkerModule {
       global: true,
       imports: [LoggerModule.forRoot(loggerParams(env))],
       controllers: [HealthController],
-      providers: [{ provide: ENV, useValue: env }, jobQueueProvider, JobQueueLifecycle],
+      providers: [
+        { provide: ENV, useValue: env },
+        jobQueueProvider,
+        JobQueueLifecycle,
+        podcastPipelineProvider,
+        PodcastConsumer,
+      ],
       exports: [ENV, jobQueueProvider],
     };
   }

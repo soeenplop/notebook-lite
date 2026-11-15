@@ -11,11 +11,15 @@ import { WorkerModule } from '../worker.module.js';
 const fakeQueue = {
   start: vi.fn<() => Promise<void>>(() => Promise.resolve()),
   stop: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+  work: vi.fn<(name: string, handler: unknown) => Promise<string>>(() =>
+    Promise.resolve('worker-id'),
+  ),
 };
 
 describe('GET /healthz', () => {
   let app: INestApplication;
   let startCallsOnInit = 0;
+  let queuesWorked: unknown[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -27,6 +31,7 @@ describe('GET /healthz', () => {
     app = moduleRef.createNestApplication();
     await app.init();
     startCallsOnInit = fakeQueue.start.mock.calls.length;
+    queuesWorked = fakeQueue.work.mock.calls.map((call) => call[0]);
   });
 
   afterAll(async () => {
@@ -40,5 +45,9 @@ describe('GET /healthz', () => {
 
   it('connects the job queue on startup', () => {
     expect(startCallsOnInit).toBe(1);
+  });
+
+  it('starts consuming podcast jobs', () => {
+    expect(queuesWorked).toEqual(['generate-podcast']);
   });
 });
