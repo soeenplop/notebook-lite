@@ -24,6 +24,9 @@ export function toTrpcError(error: DbError): TRPCError {
     // PostgREST: .single() matched no row
     case 'PGRST116':
       return new TRPCError({ code: 'NOT_FOUND', message: 'Not found', cause: error });
+    // unique_violation (e.g. a client-generated id that already exists)
+    case '23505':
+      return new TRPCError({ code: 'CONFLICT', message: 'Already exists', cause: error });
     // insufficient_privilege (RLS or grants)
     case '42501':
       return new TRPCError({ code: 'FORBIDDEN', message: 'Forbidden', cause: error });
