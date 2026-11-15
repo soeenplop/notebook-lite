@@ -64,6 +64,34 @@ export const podcastScriptSchema = z.object({
 export type PodcastScript = z.infer<typeof podcastScriptSchema>;
 
 /**
+ * Audio tags the script may contain (ElevenLabs v3/v4 read `[laughs]` etc. as delivery cues,
+ * not as words). Scripts keep only these; everything else in square brackets is removed.
+ */
+export const PODCAST_AUDIO_TAGS = [
+  'laughs',
+  'chuckles',
+  'sighs',
+  'excited',
+  'curious',
+  'surprised',
+  'thoughtful',
+  'skeptical',
+] as const;
+export type PodcastAudioTag = (typeof PODCAST_AUDIO_TAGS)[number];
+
+export function isPodcastAudioTag(value: string): value is PodcastAudioTag {
+  return (PODCAST_AUDIO_TAGS as readonly string[]).includes(value);
+}
+
+/** Removes audio tags from script text, e.g. for the transcript or word counts. */
+export function stripAudioTags(text: string): string {
+  return text
+    .replaceAll(/\[[a-z][a-z ]*\]/gi, '')
+    .replaceAll(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/**
  * Target word count of a script: the language's speaking rate times the length in minutes
  * (e.g. English 150 wpm × 6 min = 900 words).
  */

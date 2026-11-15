@@ -17,7 +17,7 @@ describe('loadEnv', () => {
       LOG_LEVEL: 'info',
       OPENAI_CHAT_MODEL: 'gpt-6.1-terra',
       OPENAI_EMBEDDING_MODEL: 'text-embedding-3-large',
-      ELEVENLABS_MODEL_ID: 'eleven_v3',
+      ELEVENLABS_MODEL_ID: 'eleven_v4',
       ELEVENLABS_BASE_URL: 'https://api.elevenlabs.io',
     });
   });
