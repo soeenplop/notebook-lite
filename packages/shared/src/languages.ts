@@ -15,6 +15,8 @@ export const SUPPORTED_LANGUAGES = {
     englishName: 'German',
     ftsConfig: 'german',
     elevenLabsCode: 'de',
+    /** Tesseract language for OCR of scanned PDF pages (tessdata file name). */
+    ocrLanguage: 'deu',
     wordsPerMinute: 130,
   },
   en: {
@@ -23,6 +25,7 @@ export const SUPPORTED_LANGUAGES = {
     englishName: 'English',
     ftsConfig: 'english',
     elevenLabsCode: 'en',
+    ocrLanguage: 'eng',
     wordsPerMinute: 150,
   },
 } as const;
