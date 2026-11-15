@@ -16,10 +16,10 @@ const sourceId = '0b6f2f7e-8a8e-4d4b-9a51-2c3d4e5f6a7b';
 
 describe('podcast contracts', () => {
   it('computes word targets from the language speaking rate', () => {
-    expect(podcastWordTarget('en', 2)).toBe(300);
-    expect(podcastWordTarget('en', 6)).toBe(900);
-    expect(podcastWordTarget('en', 15)).toBe(2250);
-    expect(podcastWordTarget('de', 6)).toBe(780);
+    expect(podcastWordTarget('en', 2)).toBe(330);
+    expect(podcastWordTarget('en', 6)).toBe(990);
+    expect(podcastWordTarget('en', 15)).toBe(2475);
+    expect(podcastWordTarget('de', 6)).toBe(858);
   });
 
   it('validates and normalizes create input', () => {

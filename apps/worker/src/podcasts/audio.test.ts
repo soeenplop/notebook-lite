@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { PODCAST_SPEECH_TEMPO } from '@notebook-lite/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { concatListEntry, FfmpegAudio, type RunCommand, runCommand } from './audio.js';
 
@@ -17,7 +18,7 @@ afterEach(async () => {
 });
 
 describe('FfmpegAudio (mocked commands)', () => {
-  it('concatenates with the concat demuxer and re-encodes to 128 kbps', async () => {
+  it('concatenates with the concat demuxer, speeds up and re-encodes to 128 kbps', async () => {
     const run = vi.fn<RunCommand>(() => Promise.resolve({ stdout: '' }));
     const inputs = [path.join(dir, 'batch-0.mp3'), path.join(dir, "it's batch-1.mp3")];
     await new FfmpegAudio(run).concatMp3(inputs, path.join(dir, 'podcast.mp3'));
@@ -25,6 +26,7 @@ describe('FfmpegAudio (mocked commands)', () => {
     const [command, args] = run.mock.calls[0] ?? [];
     expect(command).toBe('ffmpeg');
     expect(args).toEqual(expect.arrayContaining(['-f', 'concat', '-b:a', '128k', '-c:a']));
+    expect(args).toEqual(expect.arrayContaining(['-af', `atempo=${PODCAST_SPEECH_TEMPO}`]));
     expect(args?.at(-1)).toBe(path.join(dir, 'podcast.mp3'));
     const list = await readFile(path.join(dir, 'concat.txt'), 'utf8');
     expect(list).toBe(`${inputs.map(concatListEntry).join('\n')}\n`);
@@ -46,7 +48,7 @@ describe('FfmpegAudio (mocked commands)', () => {
 });
 
 describe.skipIf(!hasFfmpeg)('FfmpegAudio (real ffmpeg)', () => {
-  it('joins generated MP3s and measures the result', async () => {
+  it('joins generated MP3s, speeds them up and measures the result', async () => {
     const inputs = [0, 1].map((n) => path.join(dir, `batch-${n}.mp3`));
     await Promise.all(
       inputs.map((file, n) =>
@@ -58,11 +60,12 @@ describe.skipIf(!hasFfmpeg)('FfmpegAudio (real ffmpeg)', () => {
         ]),
       ),
     );
-    const audio = new FfmpegAudio();
+    const audio = new FfmpegAudio(runCommand, 1.25);
     const output = path.join(dir, 'podcast.mp3');
     await audio.concatMp3(inputs, output);
     const duration = await audio.durationSeconds(output);
-    expect(duration).toBeGreaterThan(1.8);
-    expect(duration).toBeLessThan(2.3);
+    // 2 s of input at 1.25× tempo ≈ 1.6 s.
+    expect(duration).toBeGreaterThan(1.4);
+    expect(duration).toBeLessThan(1.9);
   });
 });
