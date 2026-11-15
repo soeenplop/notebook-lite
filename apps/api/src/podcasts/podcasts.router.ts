@@ -1,6 +1,7 @@
-import { suggestPodcastTopics } from '@notebook-lite/ai';
+import { streamPodcastTopics } from '@notebook-lite/ai';
 import {
   createPodcastInputSchema,
+  type PodcastTopicSuggestion,
   listPodcastsInputSchema,
   podcastByIdInputSchema,
   suggestPodcastTopicsInputSchema,
@@ -20,6 +21,21 @@ import { sampleExcerpts } from './topic-sampling.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 
+/** Turns a failure mid-stream into a client-safe error (the cause is logged, not sent). */
+async function* withSuggestionErrors(
+  topics: AsyncIterable<PodcastTopicSuggestion>,
+): AsyncGenerator<PodcastTopicSuggestion, void, undefined> {
+  try {
+    yield* topics;
+  } catch (error) {
+    throw new TRPCError({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: 'Could not suggest topics. Please try again.',
+      cause: error,
+    });
+  }
+}
+
 export const podcastsRouter = router({
   /** Podcasts of a notebook, newest first. The web polls this while any is in production. */
   list: protectedProcedure
@@ -37,12 +53,14 @@ export const podcastsRouter = router({
     .query(({ ctx, input }) => listSourceOptions(ctx.supabase, input.notebookId)),
 
   /**
-   * Three topic suggestions from a sample of the selected sources, in the notebook language.
+   * Three topic suggestions from a sample of the selected sources, in the notebook language,
+   * streamed one by one as the model finishes each (the web uses `httpBatchStreamLink` for this
+   * procedure). Checks run before the stream starts, so they fail as ordinary errors.
    * Synchronous LLM call, so it is rate limited per user.
    */
   suggestTopics: protectedProcedure
     .input(suggestPodcastTopicsInputSchema)
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input, signal }) => {
       const language = await getNotebookLanguage(ctx.supabase, input.notebookId);
       const sources = await requireReadySources(ctx.supabase, input.notebookId, input.sourceIds);
       const allowed = ctx.rateLimiter.consume(
@@ -64,16 +82,14 @@ export const podcastsRouter = router({
           message: 'The selected sources contain no text to suggest topics from',
         });
       }
-      try {
-        const topics = await suggestPodcastTopics(ctx.ai.chat, { language, excerpts });
-        return { topics };
-      } catch (error) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Could not suggest topics. Please try again.',
-          cause: error,
-        });
-      }
+      // The signal aborts the LLM call when the client goes away.
+      return withSuggestionErrors(
+        streamPodcastTopics(ctx.ai.chat, {
+          language,
+          excerpts,
+          ...(signal ? { abortSignal: signal } : {}),
+        }),
+      );
     }),
 
   /** Creates a podcast and enqueues its production (at most one in production per user). */

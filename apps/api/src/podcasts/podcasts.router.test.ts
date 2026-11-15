@@ -1,5 +1,5 @@
-import type { LanguageModelV4GenerateResult } from '@ai-sdk/provider';
 import { TRPCError } from '@trpc/server';
+import { simulateReadableStream } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import { describe, expect, it } from 'vitest';
 import type { AuthUser } from '../auth/auth.types.js';
@@ -74,17 +74,34 @@ async function trpcError(promise: Promise<unknown>): Promise<TRPCError> {
   throw new Error('expected the call to fail');
 }
 
-function jsonModel(value: unknown) {
-  const result: LanguageModelV4GenerateResult = {
-    content: [{ type: 'text', text: JSON.stringify(value) }],
-    finishReason: { unified: 'stop', raw: 'stop' },
-    usage: {
-      inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
-      outputTokens: { total: 1, text: 1, reasoning: 0 },
-    },
-    warnings: [],
-  };
-  return new MockLanguageModelV4({ doGenerate: () => Promise.resolve(result) });
+/** A mock model that streams `value` as JSON, like a structured-output response. */
+function streamingJsonModel(value: unknown) {
+  return new MockLanguageModelV4({
+    doStream: () =>
+      Promise.resolve({
+        stream: simulateReadableStream({
+          chunks: [
+            { type: 'text-start', id: 't' },
+            { type: 'text-delta', id: 't', delta: JSON.stringify(value) },
+            { type: 'text-end', id: 't' },
+            {
+              type: 'finish',
+              finishReason: { unified: 'stop', raw: 'stop' },
+              usage: {
+                inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+                outputTokens: { total: 1, text: 1, reasoning: 0 },
+              },
+            },
+          ],
+        }),
+      }),
+  });
+}
+
+async function collect<T>(stream: AsyncIterable<T>): Promise<T[]> {
+  const items: T[] = [];
+  for await (const item of stream) items.push(item);
+  return items;
 }
 
 const createInput = {
@@ -322,8 +339,8 @@ describe('podcasts.suggestTopics', () => {
     { title: 'Netze', angle: 'Wo die Engpässe liegen.' },
   ];
 
-  it('samples chunks and suggests topics in the notebook language', async () => {
-    const model = jsonModel({ topics });
+  it('samples chunks and streams topics in the notebook language', async () => {
+    const model = streamingJsonModel({ elements: topics });
     const { caller, queries } = setup(
       [
         ok({ language: 'de' }),
@@ -335,16 +352,42 @@ describe('podcasts.suggestTopics', () => {
       ],
       { ai: { ...unusedAiModels, chat: model } },
     );
-    await expect(
-      caller.podcasts.suggestTopics({ notebookId, sourceIds: [sourceA, sourceB] }),
-    ).resolves.toEqual({ topics });
+    const stream = await caller.podcasts.suggestTopics({
+      notebookId,
+      sourceIds: [sourceA, sourceB],
+    });
+    await expect(collect(stream)).resolves.toEqual(topics);
 
     // source B has 10 chunks: 4 sampled, the first two plus an even spread
     expect(queries[5]?.ops).toContainEqual(['in', ['ordinal', sampleOrdinals(10, 4)]]);
-    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt);
+    const prompt = JSON.stringify(model.doStreamCalls[0]?.prompt);
     expect(prompt).toContain('German (Deutsch)');
     expect(prompt).toContain('Solar verdoppelt.');
     expect(prompt).toContain('source=\\"Notes\\"');
+  });
+
+  it('turns model failures mid-stream into a client-safe error', async () => {
+    const model = new MockLanguageModelV4({
+      doStream: () => Promise.reject(new Error('secret upstream detail')),
+    });
+    const { caller } = setup(
+      [
+        ok({ language: 'en' }),
+        readySources,
+        ok({ ordinal: 0 }),
+        ok({ ordinal: 0 }),
+        ok([{ source_id: sourceA, ordinal: 0, content: 'Text.', token_count: 5 }]),
+        ok([]),
+      ],
+      { ai: { ...unusedAiModels, chat: model } },
+    );
+    const stream = await caller.podcasts.suggestTopics({
+      notebookId,
+      sourceIds: [sourceA, sourceB],
+    });
+    const error = await trpcError(collect(stream));
+    expect(error.code).toBe('INTERNAL_SERVER_ERROR');
+    expect(error.message).toBe('Could not suggest topics. Please try again.');
   });
 
   it('is rate limited per user', async () => {
