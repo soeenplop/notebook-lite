@@ -7,6 +7,7 @@ import { AI_MODELS } from '../ai/ai-models.provider.js';
 import { AuthService } from '../auth/auth.service.js';
 import { UnauthorizedError } from '../auth/auth.types.js';
 import { type ApiEnv, ENV } from '../config/env.js';
+import { PodcastChangeListener } from '../podcasts/podcast-change-listener.js';
 import { SupabaseService } from '../supabase/supabase.service.js';
 import { appRouter } from './app-router.js';
 import type { RequestLimits, TrpcContext } from './context.js';
@@ -22,6 +23,7 @@ export class TrpcService {
     private readonly auth: AuthService,
     private readonly supabase: SupabaseService,
     private readonly queue: JobQueue,
+    private readonly podcastChanges: PodcastChangeListener,
     @Inject(AI_MODELS) private readonly ai: AiModels,
     @Inject(ENV) env: ApiEnv,
   ) {
@@ -45,6 +47,7 @@ export class TrpcService {
             ai: this.ai,
             rateLimiter: this.rateLimiter,
             limits: this.limits,
+            podcastChanges: this.podcastChanges,
           };
         } catch (error) {
           if (error instanceof UnauthorizedError) {

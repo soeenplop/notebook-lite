@@ -19,10 +19,11 @@ import {
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate, languageName } from '@/lib/format';
-import { formatDuration, modeLabel, pollInterval, speakerLabel } from '@/lib/podcasts';
+import { formatDuration, modeLabel, speakerLabel } from '@/lib/podcasts';
 import { useTRPC } from '@/lib/trpc/react';
 import { PodcastFrame, PodcastNotFound } from './podcast-frame';
 import { PodcastStatusBadge } from './podcast-list';
+import { usePodcastChanges } from './use-podcast-changes';
 
 /** One podcast: status while in production, then player, download and transcript. */
 export function PodcastView({ notebookId, podcastId }: { notebookId: string; podcastId: string }) {
@@ -37,10 +38,28 @@ export function PodcastView({ notebookId, podcastId }: { notebookId: string; pod
     ...trpc.podcasts.get.queryOptions({ id: podcastId }),
     enabled: validId,
     retry: (failureCount, error) => error.data?.code !== 'NOT_FOUND' && failureCount < 1,
-    refetchInterval: (query) => pollInterval(query.state.data ? [query.state.data.status] : []),
     // Every fetch signs new audio URLs; refetching would restart the player.
     refetchOnWindowFocus: false,
     staleTime: Infinity,
+  });
+
+  // Status changes arrive over SSE. Refetch only while in production: every fetch signs new
+  // audio URLs, which would restart the player of a ready podcast.
+  const refreshIfActive = () => {
+    const status = queryClient.getQueryData(trpc.podcasts.get.queryKey({ id: podcastId }))?.status;
+    if (status && isActivePodcastStatus(status)) {
+      void queryClient.invalidateQueries(trpc.podcasts.get.queryFilter({ id: podcastId }));
+    }
+  };
+  usePodcastChanges(notebookId, {
+    enabled: validId,
+    onStarted: refreshIfActive,
+    onEvent: (event) => {
+      if (event.type === 'resync') refreshIfActive();
+      else if (event.podcastId === podcastId) {
+        void queryClient.invalidateQueries(trpc.podcasts.get.queryFilter({ id: podcastId }));
+      }
+    },
   });
 
   const remove = useMutation(
