@@ -34,7 +34,8 @@ COPY packages/db/package.json packages/db/
 COPY packages/ai/package.json packages/ai/
 COPY packages/queue/package.json packages/queue/
 COPY apps/worker/package.json apps/worker/
-RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund -w @notebook-lite/worker
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund -w @notebook-lite/worker \
+ && mkdir -p apps/worker/node_modules
 
 # --- runtime -------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS runtime
@@ -42,6 +43,8 @@ ENV NODE_ENV=production \
     WORKER_PORT=4001
 WORKDIR /app
 COPY --from=prod-deps /app/node_modules node_modules
+# Versions that differ from the hoisted ones (e.g. undici) are installed next to the workspace.
+COPY --from=prod-deps /app/apps/worker/node_modules apps/worker/node_modules
 COPY --from=build /app/packages/shared/package.json packages/shared/
 COPY --from=build /app/packages/shared/dist packages/shared/dist
 COPY --from=build /app/packages/db/package.json packages/db/
