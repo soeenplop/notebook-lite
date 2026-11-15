@@ -34,7 +34,7 @@ COPY packages packages
 # The web app type-checks against the API router type (type-only import).
 COPY apps/api apps/api
 COPY apps/web apps/web
-RUN npm run build -w @notebook-lite/shared -w @notebook-lite/web
+RUN npm run build -w @notebook-lite/shared -w @notebook-lite/db -w @notebook-lite/web
 
 # --- runtime -------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS runtime
