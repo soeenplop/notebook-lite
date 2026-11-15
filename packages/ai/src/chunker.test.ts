@@ -105,6 +105,41 @@ describe('chunkDocument', () => {
     for (const chunk of chunks) expect(chunk.tokenCount).toBeLessThanOrEqual(400);
   });
 
+  it('does not split sentences at abbreviations', () => {
+    const block = Array.from(
+      { length: 40 },
+      (_, i) =>
+        `Satz ${i}: Dr. Müller nannte z. B. Häfen, e.g. Kiel und Prof. J. Smith stimmte zu.`,
+    ).join(' ');
+    const chunks = chunkDocument(
+      { segments: [{ text: block }] },
+      { targetTokens: 60, maxTokens: 80, overlapTokens: 0, minSectionTokens: 1 },
+    );
+    expect(chunks.length).toBeGreaterThan(5);
+    for (const chunk of chunks) {
+      expect(chunk.content).toMatch(/^Satz \d+:/);
+      expect(chunk.content).toMatch(/stimmte zu\.$/);
+    }
+  });
+
+  it('merges a tiny final chunk into the previous one of the same section', () => {
+    // Three ~64-token paragraphs fill each chunk (one of them overlap); the tail spills over.
+    const tail = 'The tail sentence has a few extra words.';
+    const blocks = Array.from({ length: 9 }, (_, i) => paragraph(`P${i}`, 30));
+    const text = [...blocks, tail].join('\n\n');
+    const options = { targetTokens: 200, maxTokens: 400, overlapTokens: 70, minSectionTokens: 50 };
+    const chunks = chunkDocument({ segments: [{ text }] }, options);
+
+    const last = chunks.at(-1);
+    expect(last?.content).toMatch(/^P6:[\s\S]*P8:[\s\S]*extra words\.$/);
+    expect(last?.charEnd).toBe(text.length);
+    expect(last?.tokenCount).toBeLessThanOrEqual(options.maxTokens);
+    // Without the merge (tail threshold 1 token) the tail is a chunk of its own.
+    const unmerged = chunkDocument({ segments: [{ text }] }, { ...options, minSectionTokens: 1 });
+    expect(unmerged).toHaveLength(chunks.length + 1);
+    expect(unmerged.at(-1)?.content).toMatch(/^P8:/);
+  });
+
   it('does not split inside fenced code blocks', () => {
     const code = '```ts\nconst a = 1;\n\nconst b = 2;\n```';
     const chunks = chunkDocument({ segments: [{ text: `Intro.\n\n${code}` }] });
