@@ -28,9 +28,10 @@ npm run format       # oxlint --fix + prettier --write
 npm run typecheck
 npm run test
 npm run build
-# from M1:
-npm run db:start     # local Supabase
-npm run db:reset     # re-apply migrations + seed
+npm run db:new -- <name>  # new migration file
+npm run db:push      # apply migrations to the remote project
+npm run db:test      # pgTAP RLS tests against the remote project (rolled back)
+npm run db:config    # push auth config + email templates (supabase/config.toml)
 npm run db:types     # regenerate packages/db types after schema changes
 ```
 
@@ -39,11 +40,12 @@ npm run db:types     # regenerate packages/db types after schema changes
 - Node 26, TypeScript 7 (native `tsc`, no JS compiler API). ESM everywhere.
 - NestJS 12 apps are built with plain `tsc`, not the Nest CLI (which pins TypeScript 6). Next.js type-checks via the `tsc` CLI.
 - `packages/shared` is consumed from its `dist/`. Root `typecheck`/`test`/`dev` build it first (`npm run build:packages`).
+- Web scripts run Next through `apps/web/scripts/next.mjs`, which loads the root `.env` (Next forwards Node flags to workers, so `--env-file` can't be used).
 - shadcn/ui uses the `base-nova` style (Base UI primitives). Add components with `npx shadcn@latest add <name> -c apps/web`.
 
 - LLM: OpenAI `gpt-6.1-terra` via Vercel AI SDK; embeddings `text-embedding-3-large` stored as `halfvec(3072)`.
 - Supabase: Postgres + pgvector, Storage (private buckets `sources`, `podcasts`, path `{user_id}/{notebook_id}/…`), Auth via email OTP.
-- Supabase Cloud (prod); local Supabase CLI stack for development.
+- Supabase Cloud only, no local stack: project `notebook-lite` (ref `tmwmklntjantjchkhmrg`) serves dev and prod. The CLI is linked; `db:push` changes the live database, so test migrations carefully. JWTs are ES256, verified via JWKS.
 - Notebook languages: `de`, `en`.
 - TTS: ElevenLabs text-to-dialogue endpoint (also for monologues), batched; ffmpeg joins the batches in the worker.
 - Deploy: Dokploy project at `dokploy.soeenplop.dev`, auto-deploy on push to `main`. Dokploy CLI available. Web: `notebook.soeenplop.dev`, API: `notebook-api.soeenplop.dev`.
@@ -54,7 +56,8 @@ npm run db:types     # regenerate packages/db types after schema changes
 - **Notebook scoping:** every child table has `notebook_id` and `user_id`, with a composite FK `(notebook_id, user_id) → notebooks(id, user_id)`. Chats and podcasts may only reference sources from their own notebook.
 - **Notebook language:** every AI operation (answers, titles, query rewriting, topic suggestions, podcast scripts, TTS) and the FTS config use the notebook language. Pass it explicitly and never infer it from the input. Supported languages live in `SUPPORTED_LANGUAGES` (`packages/shared`).
 - **Grounding:** chat answers use only retrieved chunks from the chat's selected sources, and every claim carries a `[n]` marker mapped to a chunk. Keep prompts in `packages/ai`, not inline.
-- **Contracts:** input/output schemas live in `packages/shared` (zod). The web imports the API router type type-only.
+- **Contracts:** input/output schemas live in `packages/shared` (zod). The web imports `AppRouter` type-only from `@notebook-lite/api/trpc` (`apps/api/src/trpc/app-router.ts`): that file and everything it imports must stay free of Nest decorators; procedures reach Nest services through the tRPC context.
+- **Auth in the API:** tRPC procedures that touch user data use `protectedProcedure` and `ctx.supabase` (RLS-scoped to the caller). Plain Nest controllers use `AuthGuard`.
 - **Schema changes:** only via new files in `supabase/migrations/`; never edit an applied migration. Regenerate types afterwards.
 - **Tests:** Vitest; mock OpenAI/ElevenLabs (no real external calls in tests/CI).
 - **Secrets:** never commit them; document every new env var in the root `.env.example`.

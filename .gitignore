@@ -29,3 +29,4 @@ supabase/.branches/
 .vscode/*
 !.vscode/extensions.json
 .claude/settings.local.json
+.claude/worktrees/

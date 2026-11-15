@@ -1,10 +1,8 @@
-import path from 'node:path';
-import { loadEnvConfig } from '@next/env';
 import type { NextConfig } from 'next';
 
-// Local development: all apps share the repo-root `.env` (see `.env.example`).
-// In production the variables come from the deployment environment.
-loadEnvConfig(path.resolve(process.cwd(), '../..'));
+// Local development: scripts/next.mjs loads the repo-root `.env` (see `.env.example`) and checks
+// that the build-time NEXT_PUBLIC_* values are set. In production the variables come from the
+// deployment environment.
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
