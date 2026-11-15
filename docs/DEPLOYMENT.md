@@ -43,7 +43,10 @@ containers are live.
 
 ## Configuration
 
-### GitHub (repository settings → Environments → `production`)
+### GitHub (repository settings → Secrets and variables / Environments → `production`)
+
+Variables live in the `production` environment. The two secrets are repository secrets; secrets in
+the `production` environment would work as well and take precedence.
 
 | Kind | Name | Value |
 |---|---|---|
