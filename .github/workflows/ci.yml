@@ -38,3 +38,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # Public, build-time values for the web bundle (placeholders: CI does not call them).
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_placeholder
+          NEXT_PUBLIC_API_URL: http://localhost:4000
