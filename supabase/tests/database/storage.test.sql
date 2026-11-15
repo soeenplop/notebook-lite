@@ -169,8 +169,9 @@ select lives_ok(
 set local role postgres;
 set local role postgres;
 select ok(
-  not has_function_privilege('anon', 'public.is_own_notebook_object_path(text)', 'execute'),
-  'anon cannot call the path helper'
+  not has_function_privilege('anon', 'private.is_own_notebook_object_path(text)', 'execute')
+    and not has_schema_privilege('anon', 'private', 'usage'),
+  'anon cannot reach the path helper'
 );
 
 select * from finish();
