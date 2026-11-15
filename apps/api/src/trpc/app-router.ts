@@ -1,3 +1,4 @@
+import { notebooksRouter } from '../notebooks/notebooks.router.js';
 import { protectedProcedure, router } from './trpc.js';
 
 /**
@@ -8,6 +9,7 @@ export const appRouter = router({
   auth: router({
     me: protectedProcedure.query(({ ctx }) => ({ id: ctx.user.id, email: ctx.user.email })),
   }),
+  notebooks: notebooksRouter,
 });
 
 export type AppRouter = typeof appRouter;
