@@ -1,6 +1,7 @@
 import {
   getLanguage,
   type LanguageCode,
+  PODCAST_AUDIO_TAGS,
   type PodcastLength,
   type PodcastMode,
   type PodcastSegment,
@@ -60,32 +61,68 @@ export interface ScriptBrief {
   topic: string;
 }
 
+/** Everyday spoken fillers per language, so the hosts sound like people, not like an essay. */
+const FILLER_EXAMPLES: Record<LanguageCode, string> = {
+  de: '"ähm", "also", "na ja", "weißt du", "ich meine"',
+  en: '"um", "well", "you know", "I mean", "right"',
+};
+
 function formatRules(mode: PodcastMode): string {
   return mode === 'dialogue'
     ? [
-        'Format: a conversation between two hosts. Speaker A leads and asks questions, speaker B',
-        'explains and adds detail; both react naturally to each other. Alternate speakers often and',
-        'keep most turns short (one to four sentences). Use "A" and "B" as speaker values.',
+        'Format: a lively conversation between two hosts with distinct personalities. Use "A" and',
+        '"B" as speaker values.',
+        '- Host A is curious and a little skeptical. A speaks for the listener: asks the obvious and',
+        '  the not so obvious questions, pushes back when something sounds too good, compares new',
+        '  ideas with everyday life and sums up what was just said in plain words.',
+        '- Host B knows the material and is enthusiastic about it, sometimes getting lost in',
+        '  details until A pulls the conversation back.',
+        '- They talk with each other, not at the listener: follow-up questions ("Wait, so that',
+        '  means ...?"), short reactions ("Really?", "Exactly."), friendly disagreement, a',
+        "  misunderstanding that B clears up, finishing each other's thoughts.",
+        '- Alternate speakers often. Most turns are short (one to three sentences); only B gets',
+        '  an occasional longer explanation.',
       ].join('\n')
-    : 'Format: a monologue by a single host. Every segment uses speaker "A". Split the text into segments of one paragraph each.';
+    : [
+        'Format: a monologue by a single host who talks to the listener like a friend: asks',
+        'questions and answers them, sounds genuinely interested and occasionally surprised by the',
+        'material. Every segment uses speaker "A". Split the text into segments of one paragraph each.',
+      ].join('\n');
 }
 
 export function scriptSystemPrompt(brief: ScriptBrief): string {
   return [
     'You write scripts for an audio podcast that will be read aloud by a text-to-speech engine.',
+    'The episode should be as engaging as a good podcast: curiosity, surprise, tension, and a',
+    'reason to keep listening, without ever leaving the facts of the excerpts.',
     'Rules:',
     '- Use only facts from the excerpts the user provides. Never add outside knowledge, and do not',
     '  invent numbers, names, quotes or events. If the excerpts say little about part of the topic,',
-    '  say so briefly instead of filling the gap.',
+    '  say so briefly instead of filling the gap. Everyday analogies that explain a fact are',
+    '  welcome, as long as they add no new facts.',
+    '- Where the excerpts disagree, contradict each other or contain something counterintuitive,',
+    '  make that a highlight of the episode instead of smoothing it over.',
     `- Write everything in ${languageLabel(brief.language)}, whatever language the excerpts are in.`,
-    '- Conversational spoken language: natural sentences, no lists, no headings.',
-    '- Plain text only: no markdown, no emojis, no stage directions, no sound effects, no speaker',
-    '  names inside the text, no URLs.',
+    '- Conversational spoken language: natural sentences, no lists, no headings. Now and then a',
+    `  filler such as ${FILLER_EXAMPLES[brief.language]}, a restarted sentence or a short pause`,
+    '  ("...") makes it sound natural. Use them sparingly, at most one every few turns.',
+    `- Audio tags: you may put one of these tags in square brackets before a sentence to shape the`,
+    `  delivery: ${PODCAST_AUDIO_TAGS.map((tag) => `[${tag}]`).join(', ')}. Tags stay in English`,
+    '  whatever the script language. Use them sparingly and only where the emotion fits, at most',
+    '  one per turn and not in every turn. No other tags or bracketed text.',
+    '- Plain text only: no markdown, no emojis, no other stage directions, no sound effects, no',
+    '  speaker names inside the text, no URLs.',
     '- Never read citations or excerpt numbers aloud (no "[1]", no "excerpt 3").',
     '- Spell out abbreviations and symbols the way a speaker would say them.',
     formatRules(brief.mode),
   ].join('\n');
 }
+
+const HOOK_INSTRUCTION =
+  'Open with a hook taken from the excerpts: the most surprising fact, a striking contradiction or a question the listener wants answered. No generic greeting like "Today we talk about ...". Introduce the topic right after the hook.';
+
+const TAKEAWAY_INSTRUCTION =
+  'Close with one to three concrete takeaways or an open question to think about, not a recap of everything that was said.';
 
 export function scriptUserPrompt(
   brief: ScriptBrief,
@@ -95,8 +132,9 @@ export function scriptUserPrompt(
   return [
     `Topic: ${brief.topic}`,
     `Length: about ${brief.targetMinutes} minutes, so about ${targetWords} words in total (stay within 10 percent).`,
-    'Open with a short hook that introduces the topic, and close with a brief wrap-up.',
-    'Also give the episode a short title (at most 10 words).',
+    HOOK_INSTRUCTION,
+    TAKEAWAY_INSTRUCTION,
+    'Also give the episode a short, catchy title (at most 10 words, no audio tags).',
     '',
     `Excerpts:\n\n${formatPodcastExcerpts(excerpts)}`,
   ].join('\n');
@@ -111,10 +149,12 @@ export function outlineUserPrompt(
   return [
     `Topic: ${brief.topic}`,
     `Plan an episode of about ${brief.targetMinutes} minutes (about ${targetWords} words).`,
-    `Return a short episode title and an outline of exactly ${sectionCount} sections in speaking`,
-    'order. The first section opens the episode with a hook, the last one wraps it up. For each',
-    'section give a heading and the key points from the excerpts it covers. Do not repeat points',
-    'across sections. Do not write the script yet.',
+    `Return a short, catchy episode title and an outline of exactly ${sectionCount} sections in`,
+    'speaking order. Give the episode an arc: the first section opens with a hook (the most',
+    'surprising fact, a contradiction or a question from the excerpts), the middle sections build',
+    'up to the most interesting or contested point, the last one closes with concrete takeaways',
+    'or an open question. For each section give a heading and the key points from the excerpts',
+    'it covers. Do not repeat points across sections. Do not write the script yet.',
     '',
     `Excerpts:\n\n${formatPodcastExcerpts(excerpts)}`,
   ].join('\n');
@@ -139,9 +179,9 @@ export function sectionUserPrompt(input: {
   if (!section) throw new Error(`outline has no section ${index}`);
   const position =
     index === 0
-      ? 'This is the first section: open the episode with a short hook and introduce the topic.'
+      ? `This is the first section. ${HOOK_INSTRUCTION}`
       : index === outline.length - 1
-        ? 'This is the last section: continue seamlessly and close the episode with a brief wrap-up.'
+        ? `This is the last section: continue seamlessly. ${TAKEAWAY_INSTRUCTION}`
         : 'This is a middle section: continue seamlessly, without greeting or wrapping up.';
   const previous = input.previous.length
     ? input.previous.map((segment) => `${segment.speaker}: ${segment.text}`).join('\n')

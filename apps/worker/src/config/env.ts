@@ -23,7 +23,7 @@ export const workerEnvSchema = z.object({
    * podcast jobs fail with a clear message until they are set.
    */
   ELEVENLABS_API_KEY: optionalString,
-  ELEVENLABS_MODEL_ID: z.string().trim().min(1).default('eleven_v3'),
+  ELEVENLABS_MODEL_ID: z.string().trim().min(1).default('eleven_v4'),
   ELEVENLABS_BASE_URL: z
     .url()
     .default('https://api.elevenlabs.io')
