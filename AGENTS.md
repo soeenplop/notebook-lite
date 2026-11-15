@@ -45,6 +45,7 @@ npm run test:e2e     # Playwright smoke tests (needs `npm run build -w @notebook
 - Web scripts run Next through `apps/web/scripts/next.mjs`, which loads the root `.env` (Next forwards Node flags to workers, so `--env-file` can't be used).
 - shadcn/ui uses the `base-nova` style (Base UI primitives). Add components with `npx shadcn@latest add <name> -c apps/web`.
 
+- Ingestion: PDFs via LiteParse (`@llamaindex/liteparse`, in-process) with Tesseract OCR for pages without a text layer; DOCX via `mammoth`. The worker image bakes in the Tesseract data per language (`docker/worker.Dockerfile`); locally LiteParse downloads it on first use.
 - LLM: OpenAI `gpt-6.1-terra` via Vercel AI SDK; embeddings `text-embedding-3-large` stored as `halfvec(3072)`.
 - Supabase: Postgres + pgvector, Storage (private buckets `sources`, `podcasts`, path `{user_id}/{notebook_id}/…`), Auth via email OTP.
 - Supabase Cloud only, no local stack: project `notebook-lite` (ref `tmwmklntjantjchkhmrg`) serves dev and prod. The CLI is linked; `db:push` changes the live database, so test migrations carefully. JWTs are ES256, verified via JWKS.

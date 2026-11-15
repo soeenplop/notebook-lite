@@ -67,6 +67,9 @@ Set per application (*Environment* tab). Never put the Supabase secret key into 
 - **worker**: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`, optional
   `OPENAI_CHAT_MODEL` / `OPENAI_EMBEDDING_MODEL`, `LOG_LEVEL=info`. It refuses to start without
   them (source ingestion, M3). ElevenLabs keys follow with podcasts (M5).
+  The worker image also ships the Tesseract language data for OCR of scanned PDFs
+  (`TESSDATA_PREFIX=/usr/share/tessdata`); a new notebook language needs its `.traineddata`
+  file added in `docker/worker.Dockerfile`.
 
 `DATABASE_URL` (pg-boss) is the Supabase session-pooler connection string (port 5432; the
 direct connection is IPv6-only). Both apps fail at boot without it. pg-boss installs and
