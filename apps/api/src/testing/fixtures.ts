@@ -13,6 +13,10 @@ export const testEnv: ApiEnv = {
   CORS_ORIGIN: ['http://localhost:3000'],
   LOG_LEVEL: 'info',
   RATE_LIMIT_PER_MINUTE: 1000,
+  CHAT_MESSAGES_PER_MINUTE: 100,
+  OPENAI_API_KEY: 'sk-test',
+  OPENAI_CHAT_MODEL: 'test-chat-model',
+  OPENAI_EMBEDDING_MODEL: 'test-embedding-model',
 };
 
 export interface TestKeys {
