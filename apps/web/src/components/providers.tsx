@@ -4,6 +4,7 @@ import type { AppRouter } from '@notebook-lite/api/trpc';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import { type ReactNode, useState } from 'react';
+import { Toaster } from '@/components/ui/sonner';
 import { publicEnv } from '@/lib/env';
 import { createClient } from '@/lib/supabase/client';
 import { TRPCProvider } from '@/lib/trpc/react';
@@ -35,6 +36,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
         {children}
+        <Toaster position="bottom-right" />
       </TRPCProvider>
     </QueryClientProvider>
   );
