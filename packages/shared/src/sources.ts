@@ -1,0 +1,162 @@
+import { z } from 'zod';
+import { notebookIdSchema } from './notebooks.js';
+
+/** Mirrors the check constraints on public.sources. */
+export const SOURCE_KINDS = ['pdf', 'docx', 'md', 'url'] as const;
+export type SourceKind = (typeof SOURCE_KINDS)[number];
+
+export const FILE_SOURCE_KINDS = ['pdf', 'docx', 'md'] as const;
+export type FileSourceKind = (typeof FILE_SOURCE_KINDS)[number];
+
+export const SOURCE_STATUSES = ['pending', 'processing', 'ready', 'failed'] as const;
+export type SourceStatus = (typeof SOURCE_STATUSES)[number];
+
+/** Statuses after which a source no longer changes on its own (polling can stop). */
+export const TERMINAL_SOURCE_STATUSES = ['ready', 'failed'] as const satisfies SourceStatus[];
+
+export function isTerminalSourceStatus(status: SourceStatus): boolean {
+  return (TERMINAL_SOURCE_STATUSES as readonly SourceStatus[]).includes(status);
+}
+
+export const SOURCE_TITLE_MAX_LENGTH = 300;
+export const SOURCE_URL_MAX_LENGTH = 2048;
+
+/** Upload limit; must match `file_size_limit` of the `sources` Storage bucket. */
+export const SOURCE_MAX_BYTES = 25 * 1024 * 1024;
+
+/** Storage buckets (private). Paths follow {user_id}/{notebook_id}/{entity_id}/{filename}. */
+export const STORAGE_BUCKETS = { sources: 'sources', podcasts: 'podcasts' } as const;
+
+/** Content type used for each file kind (must be allowed by the `sources` bucket). */
+export const SOURCE_MIME_TYPES: Record<FileSourceKind, string> = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  md: 'text/markdown',
+};
+
+const EXTENSION_KINDS: Record<string, FileSourceKind> = {
+  pdf: 'pdf',
+  docx: 'docx',
+  md: 'md',
+  markdown: 'md',
+};
+
+/** File extensions accepted by the upload dialog (with the leading dot). */
+export const SOURCE_FILE_EXTENSIONS = Object.keys(EXTENSION_KINDS).map((ext) => `.${ext}`);
+
+/** The source kind for a file name, or null if the extension is not supported. */
+export function sourceKindFromFileName(fileName: string): FileSourceKind | null {
+  const dot = fileName.lastIndexOf('.');
+  if (dot < 0) return null;
+  return EXTENSION_KINDS[fileName.slice(dot + 1).toLowerCase()] ?? null;
+}
+
+/** Storage object names allow only a conservative character set (no umlauts, no slashes). */
+export const STORAGE_FILE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/;
+
+/**
+ * A Storage-safe file name derived from a user's file name: ASCII letters, digits, `.`, `_`
+ * and `-` only, at most 120 characters, extension kept.
+ */
+export function toStorageFileName(fileName: string): string {
+  const dot = fileName.lastIndexOf('.');
+  const ext = dot > 0 ? fileName.slice(dot + 1).toLowerCase() : '';
+  const base = (dot > 0 ? fileName.slice(0, dot) : fileName)
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Za-z0-9._-]+/g, '_')
+    .replace(/^[._-]+/, '')
+    .slice(0, 100);
+  const safeExt = ext.replace(/[^a-z0-9]/g, '').slice(0, 10);
+  return `${base || 'file'}${safeExt ? `.${safeExt}` : ''}`;
+}
+
+/** Object path of a source file: {userId}/{notebookId}/{sourceId}/{fileName}. */
+export function sourceStoragePath(
+  userId: string,
+  notebookId: string,
+  sourceId: string,
+  fileName: string,
+): string {
+  return `${userId}/${notebookId}/${sourceId}/${fileName}`;
+}
+
+/** Folder that holds all objects of a notebook in a bucket (for cleanup): {userId}/{notebookId}. */
+export function notebookStoragePrefix(userId: string, notebookId: string): string {
+  return `${userId}/${notebookId}`;
+}
+
+/** A source title derived from a file name: the name without its extension. */
+export function titleFromFileName(fileName: string): string {
+  const dot = fileName.lastIndexOf('.');
+  const title = (dot > 0 ? fileName.slice(0, dot) : fileName).trim();
+  return (title || fileName).slice(0, SOURCE_TITLE_MAX_LENGTH);
+}
+
+export const sourceIdSchema = z.uuid();
+export const sourceKindSchema = z.enum(SOURCE_KINDS);
+export const fileSourceKindSchema = z.enum(FILE_SOURCE_KINDS);
+export const sourceStatusSchema = z.enum(SOURCE_STATUSES);
+
+export const sourceTitleSchema = z
+  .string()
+  .trim()
+  .min(1, 'Title is required')
+  .max(SOURCE_TITLE_MAX_LENGTH, `Title must be at most ${SOURCE_TITLE_MAX_LENGTH} characters`);
+
+/** Web page address for URL sources: http(s) only, no credentials. */
+export const sourceUrlSchema = z
+  .string()
+  .trim()
+  .max(SOURCE_URL_MAX_LENGTH, 'URL is too long')
+  .pipe(z.url({ protocol: /^https?$/, error: 'Enter a valid http(s) URL' }))
+  .refine((value) => {
+    const url = URL.parse(value);
+    return url !== null && url.username === '' && url.password === '';
+  }, 'URLs with credentials are not supported');
+
+export const listSourcesInputSchema = z.object({ notebookId: notebookIdSchema });
+
+export const sourceByIdInputSchema = z.object({
+  notebookId: notebookIdSchema,
+  id: sourceIdSchema,
+});
+
+/**
+ * Registers a file the web app already uploaded to
+ * `sources/{userId}/{notebookId}/{id}/{fileName}`. The id is generated by the client so the
+ * upload path is known before the row exists.
+ */
+export const createSourceInputSchema = z.object({
+  id: sourceIdSchema,
+  notebookId: notebookIdSchema,
+  kind: fileSourceKindSchema,
+  title: sourceTitleSchema,
+  fileName: z.string().regex(STORAGE_FILE_NAME_PATTERN, 'Invalid file name'),
+  sizeBytes: z.number().int().min(1).max(SOURCE_MAX_BYTES, 'File is larger than 25 MB'),
+});
+export type CreateSourceInput = z.input<typeof createSourceInputSchema>;
+
+export const createSourceFromUrlInputSchema = z.object({
+  notebookId: notebookIdSchema,
+  url: sourceUrlSchema,
+});
+export type CreateSourceFromUrlInput = z.input<typeof createSourceFromUrlInputSchema>;
+
+export const sourceSchema = z.object({
+  id: sourceIdSchema,
+  notebookId: notebookIdSchema,
+  kind: sourceKindSchema,
+  title: z.string(),
+  originalUrl: z.string().nullable(),
+  mimeType: z.string().nullable(),
+  sizeBytes: z.number().int().nonnegative().nullable(),
+  status: sourceStatusSchema,
+  /** User-readable reason when status is `failed`. */
+  error: z.string().nullable(),
+  pageCount: z.number().int().nonnegative().nullable(),
+  tokenCount: z.number().int().nonnegative().nullable(),
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+export type Source = z.infer<typeof sourceSchema>;
