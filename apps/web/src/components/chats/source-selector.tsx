@@ -33,7 +33,10 @@ export function SourceSelector({
   const selectedReady = ready.filter((source) => selected.has(source.id)).length;
 
   return (
-    <section className="grid content-start gap-3 rounded-xl border p-4" aria-label="Sources">
+    <section
+      className="grid min-w-0 grid-cols-1 content-start gap-3 rounded-xl border p-4"
+      aria-label="Sources"
+    >
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-medium">
           <FileTextIcon className="size-4 text-muted-foreground" />
@@ -52,7 +55,7 @@ export function SourceSelector({
         </p>
       ) : (
         <>
-          <ul className="grid gap-1">
+          <ul className="grid grid-cols-1 gap-1">
             {sources.map((source) => {
               const isReady = source.status === 'ready';
               const Icon = source.kind === 'url' ? GlobeIcon : FileTextIcon;

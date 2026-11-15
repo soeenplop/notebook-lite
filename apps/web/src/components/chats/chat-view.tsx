@@ -69,8 +69,8 @@ function LoadedChat({ chat }: { chat: ChatDetail }) {
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <aside className="grid content-start gap-4">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <aside className="grid min-w-0 grid-cols-1 content-start gap-4">
         <SourceSelector
           sources={chat.sources}
           selected={selected}
@@ -135,7 +135,7 @@ function Frame({
   children: ReactNode;
 }) {
   return (
-    <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
+    <main className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 py-8">
       <Link
         href={`/notebooks/${notebookId}`}
         className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -151,7 +151,7 @@ function Frame({
 function ChatNotFound({ notebookId }: { notebookId: string | null }) {
   const href = notebookId ? `/notebooks/${notebookId}` : '/';
   return (
-    <main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
+    <main className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 py-8">
       <div className="grid gap-3 rounded-xl border border-dashed px-6 py-16 text-center">
         <h1 className="text-lg font-medium">Chat not found</h1>
         <p className="text-sm text-muted-foreground">

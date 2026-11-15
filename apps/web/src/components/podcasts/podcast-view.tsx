@@ -110,7 +110,7 @@ export function PodcastView({ notebookId, podcastId }: { notebookId: string; pod
           <span className="text-muted-foreground">Topic:</span> {data.topic}
         </p>
         {data.sources.length > 0 && (
-          <p className="text-sm">
+          <p className="text-sm break-words">
             <span className="text-muted-foreground">Sources:</span>{' '}
             {data.sources.map((source) => source.title).join(', ')}
           </p>
