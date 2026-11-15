@@ -28,6 +28,12 @@ test('an invalid sign-in link shows an error on the login page', async ({ page }
   await expect(page.getByRole('alert').filter({ hasText: 'invalid or has expired' })).toBeVisible();
 });
 
+test('auth redirects stay on the public host (relative Location)', async ({ request }) => {
+  const response = await request.get('/auth/callback?code=invalid', { maxRedirects: 0 });
+  expect(response.status()).toBe(307);
+  expect(response.headers().location).toBe('/login?error=link');
+});
+
 test('unknown public routes render the not-found page', async ({ page }) => {
   const response = await page.goto('/auth/does-not-exist');
   expect(response?.status()).toBe(404);
