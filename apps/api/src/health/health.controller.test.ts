@@ -5,19 +5,14 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../app.module.js';
+import { testEnv } from '../testing/fixtures.js';
 
 describe('GET /healthz', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [
-        AppModule.forRoot({
-          API_PORT: 0,
-          CORS_ORIGIN: ['http://localhost:3000'],
-          LOG_LEVEL: 'info',
-        }),
-      ],
+      imports: [AppModule.forRoot(testEnv)],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();

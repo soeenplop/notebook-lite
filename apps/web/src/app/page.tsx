@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { ApiStatus } from '@/components/api-status';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/server';
 
@@ -19,6 +20,7 @@ export default function Home() {
       <Suspense fallback={<p className="text-sm text-muted-foreground">Loading…</p>}>
         <CurrentUser />
       </Suspense>
+      <ApiStatus />
       <form action="/auth/sign-out" method="post">
         <Button type="submit" variant="outline">
           Sign out
