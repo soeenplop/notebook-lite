@@ -6,6 +6,20 @@ Format: **Scope** (what part of the system / which document) · **Original decis
 
 ---
 
+## 2026-11-16 — Podcast voices: back to the voice-library voices
+
+- **Scope:** Podcast TTS voices (`SUPPORTED_LANGUAGES` in `packages/shared`).
+- **Original decision:** ElevenLabs default voices (see the next entry), because the free plan rejected library voices.
+- **Correction:** The voice-library voices are used again: German `gSZiss4v1BGsE1cTgoWF` (A) / `cwXXmRbp4lGQdqLfbcKH` (B), English `T2sZgOl8ol4kf4u6yM2z` (A) / `BAdH0bMfq6VleQGLXj38` (B). Both pairs were tested against text-to-dialogue with `eleven_v3`.
+- **Rationale:** Decision by the project owner after the ElevenLabs account was changed so the library voices work via the API. They were chosen for the podcasts originally.
+
+## 2026-11-16 — Podcast voices: ElevenLabs default voices
+
+- **Scope:** Podcast TTS voices (`SUPPORTED_LANGUAGES` in `packages/shared`).
+- **Original decision:** Voice-library voices per language (German `gSZiss4v1BGsE1cTgoWF`/`cwXXmRbp4lGQdqLfbcKH`, English `T2sZgOl8ol4kf4u6yM2z`/`BAdH0bMfq6VleQGLXj38`).
+- **Correction:** ElevenLabs default voices: German Laura (A, `FGY2WhTYpPnrIDTdsKH5`) and Brian (B, `nPczCjzI2devNBz1zQrb`); English Jessica (A, `cgSgspJ2msm6clMCkdW9`) and George (B, `JBFqnCBsd6RMkjVDRZzb`). Both pairs were tested against the text-to-dialogue endpoint with `eleven_v3`.
+- **Rationale:** The account is on the ElevenLabs free plan, which returns 402 `paid_plan_required` for voice-library voices via the API, so every podcast failed at the audio step. Decision by the project owner. The library voices can come back after an upgrade.
+
 ## 2026-11-16 — Podcast voices per notebook language
 
 - **Scope:** Podcast TTS (`docs/IMPLEMENTATION_PLAN.md` §5.5, §7, Q4b; `packages/shared` languages; worker env).
