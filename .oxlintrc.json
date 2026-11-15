@@ -21,7 +21,13 @@
     "import/no-unassigned-import": "off",
     "unicorn/prefer-node-protocol": "error",
     "eqeqeq": "error",
-    "no-console": "warn"
+    "no-console": "warn",
+    "typescript/no-extraneous-class": [
+      "warn",
+      {
+        "allowWithDecorator": true
+      }
+    ]
   },
   "overrides": [
     {
@@ -37,11 +43,15 @@
         "jsx-a11y",
         "nextjs"
       ],
-      "env": { "browser": true }
+      "env": {
+        "browser": true
+      }
     },
     {
       "files": ["**/*.test.ts", "**/*.test.tsx"],
-      "rules": { "no-console": "off" }
+      "rules": {
+        "no-console": "off"
+      }
     }
   ]
 }
