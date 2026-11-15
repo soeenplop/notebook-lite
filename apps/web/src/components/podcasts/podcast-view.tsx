@@ -85,12 +85,12 @@ export function PodcastView({ notebookId, podcastId }: { notebookId: string; pod
   const active = isActivePodcastStatus(data.status);
   return (
     <PodcastFrame backHref={listHref} backLabel="All podcasts">
-      <header className="grid gap-2">
+      <header className="grid min-w-0 grid-cols-1 gap-2">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="min-w-0 text-2xl font-semibold tracking-tight">
+          <h1 className="min-w-0 flex-1 text-2xl font-semibold tracking-tight break-words">
             {data.title ?? data.topic}
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <PodcastStatusBadge status={data.status} />
             <Button
               variant="ghost"
@@ -106,7 +106,7 @@ export function PodcastView({ notebookId, podcastId }: { notebookId: string; pod
           {modeLabel(data.mode)} · ~{data.targetMinutes} min · {languageName(data.language)} ·{' '}
           {formatDate(data.createdAt)}
         </p>
-        <p className="text-sm">
+        <p className="text-sm break-words">
           <span className="text-muted-foreground">Topic:</span> {data.topic}
         </p>
         {data.sources.length > 0 && (
@@ -155,7 +155,7 @@ export function PodcastView({ notebookId, podcastId }: { notebookId: string; pod
       )}
 
       {data.script && (
-        <section className="grid gap-3" aria-labelledby="transcript-heading">
+        <section className="grid grid-cols-1 gap-3" aria-labelledby="transcript-heading">
           <h2 id="transcript-heading" className="text-lg font-medium">
             Transcript
           </h2>
@@ -163,7 +163,7 @@ export function PodcastView({ notebookId, podcastId }: { notebookId: string; pod
             {data.script.segments.map((segment, index) => (
               // The script is immutable once written, so the position is a stable key.
               // oxlint-disable-next-line react/no-array-index-key
-              <li key={index} className="grid gap-0.5 text-sm">
+              <li key={index} className="grid gap-0.5 text-sm break-words">
                 <span className="text-xs font-medium text-muted-foreground">
                   {speakerLabel(segment.speaker, data.mode)}
                 </span>
