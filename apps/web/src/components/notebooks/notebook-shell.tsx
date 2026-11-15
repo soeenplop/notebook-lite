@@ -81,7 +81,13 @@ export function NotebookShell({ notebookId }: { notebookId: string }) {
         >
           Ask questions answered only from your selected sources, with citations.
         </Section>
-        <Section icon={MicIcon} title="Podcasts" count={pluralize(data.counts.podcasts, 'podcast')}>
+        <Section
+          icon={MicIcon}
+          title="Podcasts"
+          count={pluralize(data.counts.podcasts, 'podcast')}
+          href={`/notebooks/${notebookId}/podcasts`}
+          linkLabel="Open podcasts"
+        >
           Turn sources into a monologue or a two-person dialogue.
         </Section>
       </div>
@@ -108,11 +114,16 @@ function Section({
   icon: Icon,
   title,
   count,
+  href,
+  linkLabel,
   children,
 }: {
   icon: ComponentType<{ className?: string }>;
   title: string;
   count: string;
+  /** Page of the section; sections without one are not built yet. */
+  href?: string;
+  linkLabel?: string;
   children: ReactNode;
 }) {
   return (
@@ -125,7 +136,15 @@ function Section({
         <span className="text-xs text-muted-foreground">{count}</span>
       </div>
       <p className="text-sm text-muted-foreground">{children}</p>
-      <p className="text-xs text-muted-foreground">Coming soon.</p>
+      {href ? (
+        <div>
+          <Button render={<Link href={href} />} variant="outline" size="sm">
+            {linkLabel ?? `Open ${title.toLowerCase()}`}
+          </Button>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">Coming soon.</p>
+      )}
     </section>
   );
 }
