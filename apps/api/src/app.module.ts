@@ -6,6 +6,7 @@ import {
   RequestMethod,
 } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import { aiModelsProvider } from './ai/ai-models.provider.js';
 import { AuthGuard } from './auth/auth.guard.js';
 import { AuthService } from './auth/auth.service.js';
 import { createSupabaseJwks, JWKS } from './auth/jwks.js';
@@ -33,6 +34,7 @@ export class AppModule implements NestModule {
         SupabaseService,
         jobQueueProvider,
         JobQueueShutdown,
+        aiModelsProvider,
         TrpcService,
       ],
       exports: [ENV, AuthService, AuthGuard, SupabaseService],
