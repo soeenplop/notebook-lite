@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build:packages": "npm run build -w @notebook-lite/shared",
-    "dev": "npm run build:packages && concurrently -k -n shared,api,worker -c gray,blue,magenta \"npm run dev -w @notebook-lite/shared\" \"npm run dev -w @notebook-lite/api\" \"npm run dev -w @notebook-lite/worker\"",
+    "dev": "npm run build:packages && concurrently -k -n shared,api,worker,web -c gray,blue,magenta,green \"npm run dev -w @notebook-lite/shared\" \"npm run dev -w @notebook-lite/api\" \"npm run dev -w @notebook-lite/worker\" \"npm run dev -w @notebook-lite/web\"",
     "lint": "oxlint --type-aware --deny-warnings && prettier --check .",
     "format": "oxlint --type-aware --fix && prettier --write .",
     "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",
