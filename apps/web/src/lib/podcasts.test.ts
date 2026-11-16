@@ -1,20 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-  canContinue,
-  formatDuration,
-  PODCAST_POLL_MS,
-  pollInterval,
-  speakerLabel,
-} from './podcasts';
+import { canContinue, formatDuration, speakerLabel } from './podcasts';
 
 describe('podcast helpers', () => {
-  it('polls only while a podcast is in production', () => {
-    expect(pollInterval(['ready', 'queued'])).toBe(PODCAST_POLL_MS);
-    expect(pollInterval(['synthesizing'])).toBe(PODCAST_POLL_MS);
-    expect(pollInterval(['ready', 'failed'])).toBe(false);
-    expect(pollInterval(undefined)).toBe(false);
-  });
-
   it('formats durations', () => {
     expect(formatDuration(42.4)).toBe('0:42');
     expect(formatDuration(365)).toBe('6:05');

@@ -17,6 +17,7 @@ import {
   listSourceOptions,
   requireReadySources,
 } from './podcasts.repository.js';
+import { podcastChangeEvents } from './podcast-changes.js';
 import { sampleExcerpts } from './topic-sampling.js';
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -37,10 +38,20 @@ async function* withSuggestionErrors(
 }
 
 export const podcastsRouter = router({
-  /** Podcasts of a notebook, newest first. The web polls this while any is in production. */
+  /** Podcasts of a notebook, newest first. */
   list: protectedProcedure
     .input(listPodcastsInputSchema)
     .query(({ ctx, input }) => listPodcasts(ctx.supabase, input.notebookId)),
+
+  /**
+   * Live changes (status, title) of the caller's podcasts in a notebook, over SSE. Events carry
+   * no podcast data: clients refetch `list`/`get`, so everything they show goes through RLS.
+   */
+  onChange: protectedProcedure
+    .input(listPodcastsInputSchema)
+    .subscription(({ ctx, input, signal }) =>
+      podcastChangeEvents(ctx.podcastChanges, ctx.user.id, input.notebookId, signal),
+    ),
 
   /** One podcast with script, sources and short-lived signed audio URLs once ready. */
   get: protectedProcedure

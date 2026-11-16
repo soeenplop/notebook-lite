@@ -16,6 +16,7 @@ import { UserRateLimiter } from './chat/user-rate-limiter.js';
 import { type ApiEnv, ENV } from './config/env.js';
 import { HealthController } from './health/health.controller.js';
 import { loggerParams } from './logging.js';
+import { PodcastChangeListener } from './podcasts/podcast-change-listener.js';
 import { JobQueueShutdown, jobQueueProvider } from './queue/job-queue.provider.js';
 import { SupabaseService } from './supabase/supabase.service.js';
 import { TrpcMiddleware } from './trpc/trpc.middleware.js';
@@ -37,6 +38,7 @@ export class AppModule implements NestModule {
         SupabaseService,
         jobQueueProvider,
         JobQueueShutdown,
+        PodcastChangeListener,
         aiModelsProvider,
         TrpcService,
         aiModelsProvider,

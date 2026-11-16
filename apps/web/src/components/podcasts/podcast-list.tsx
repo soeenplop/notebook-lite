@@ -5,7 +5,7 @@ import {
   notebookIdSchema,
   type PodcastSummary,
 } from '@notebook-lite/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LoaderCircleIcon, MicIcon, PlusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -13,14 +13,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate, languageName } from '@/lib/format';
-import { formatDuration, modeLabel, PODCAST_STATUS_LABELS, pollInterval } from '@/lib/podcasts';
+import { formatDuration, modeLabel, PODCAST_STATUS_LABELS } from '@/lib/podcasts';
 import { useTRPC } from '@/lib/trpc/react';
 import { NewPodcastDialog } from './new-podcast-dialog';
 import { PodcastFrame, PodcastNotFound } from './podcast-frame';
+import { usePodcastChanges } from './use-podcast-changes';
 
-/** Podcasts of a notebook with a "New podcast" wizard; polls while one is in production. */
+/** Podcasts of a notebook with a "New podcast" wizard; statuses update live (SSE). */
 export function PodcastList({ notebookId }: { notebookId: string }) {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const [wizardOpen, setWizardOpen] = useState(false);
   const validId = notebookIdSchema.safeParse(notebookId).success;
   const notebook = useQuery({
@@ -31,8 +33,11 @@ export function PodcastList({ notebookId }: { notebookId: string }) {
   const podcasts = useQuery({
     ...trpc.podcasts.list.queryOptions({ notebookId }),
     enabled: validId,
-    refetchInterval: (query) => pollInterval(query.state.data?.map((podcast) => podcast.status)),
   });
+  // Refetch on (re)connect too: changes before the stream was up would be missed otherwise.
+  const refreshList = () =>
+    void queryClient.invalidateQueries(trpc.podcasts.list.queryFilter({ notebookId }));
+  usePodcastChanges(notebookId, { enabled: validId, onStarted: refreshList, onEvent: refreshList });
 
   if (!validId || notebook.error?.data?.code === 'NOT_FOUND') {
     return <PodcastNotFound what="Notebook" backHref="/" backLabel="All notebooks" />;
